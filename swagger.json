@@ -1,0 +1,190 @@
+{
+  "openapi": "3.0.0",
+  "info": {
+    "title": "API Superhéroes y Villanos",
+    "version": "1.0.0",
+    "description": "API para gestionar superhéroes, villanos y enfrentamientos."
+  },
+  "servers": [
+    { "url": "http://localhost:3001" }
+  ],
+  "paths": {
+    "/api/heroes": {
+      "get": {
+        "summary": "Obtener todos los héroes",
+        "responses": {
+          "200": {
+            "description": "Lista de héroes",
+            "content": {
+              "application/json": {
+                "schema": { "type": "array", "items": { "$ref": "#/components/schemas/Hero" } }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "summary": "Crear un héroe",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": { "$ref": "#/components/schemas/Hero" }
+            }
+          }
+        },
+        "responses": {
+          "201": { "description": "Héroe creado" }
+        }
+      }
+    },
+    "/api/heroes/{id}": {
+      "put": {
+        "summary": "Actualizar un héroe",
+        "parameters": [
+          { "name": "id", "in": "path", "required": true, "schema": { "type": "integer" } }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": { "$ref": "#/components/schemas/Hero" }
+            }
+          }
+        },
+        "responses": { "200": { "description": "Héroe actualizado" } }
+      },
+      "delete": {
+        "summary": "Eliminar un héroe",
+        "parameters": [
+          { "name": "id", "in": "path", "required": true, "schema": { "type": "integer" } }
+        ],
+        "responses": { "200": { "description": "Héroe eliminado" } }
+      }
+    },
+    "/api/villains": {
+      "get": {
+        "summary": "Obtener todos los villanos",
+        "responses": {
+          "200": {
+            "description": "Lista de villanos",
+            "content": {
+              "application/json": {
+                "schema": { "type": "array", "items": { "$ref": "#/components/schemas/Villain" } }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "summary": "Crear un villano",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": { "$ref": "#/components/schemas/Villain" }
+            }
+          }
+        },
+        "responses": {
+          "201": { "description": "Villano creado" }
+        }
+      }
+    },
+    "/api/villains/{id}": {
+      "put": {
+        "summary": "Actualizar un villano",
+        "parameters": [
+          { "name": "id", "in": "path", "required": true, "schema": { "type": "integer" } }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": { "$ref": "#/components/schemas/Villain" }
+            }
+          }
+        },
+        "responses": { "200": { "description": "Villano actualizado" } }
+      },
+      "delete": {
+        "summary": "Eliminar un villano",
+        "parameters": [
+          { "name": "id", "in": "path", "required": true, "schema": { "type": "integer" } }
+        ],
+        "responses": { "200": { "description": "Villano eliminado" } }
+      }
+    },
+    "/api/battles": {
+      "get": {
+        "summary": "Obtener todos los enfrentamientos",
+        "responses": {
+          "200": {
+            "description": "Lista de enfrentamientos",
+            "content": {
+              "application/json": {
+                "schema": { "type": "array", "items": { "$ref": "#/components/schemas/Battle" } }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "summary": "Crear un enfrentamiento",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "heroId": { "type": "integer" },
+                  "villainId": { "type": "integer" },
+                  "winner": { "type": "string", "enum": ["hero", "villain"] }
+                },
+                "required": ["heroId", "villainId", "winner"]
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": { "description": "Enfrentamiento creado" }
+        }
+      }
+    }
+  },
+  "components": {
+    "schemas": {
+      "Hero": {
+        "type": "object",
+        "properties": {
+          "id": { "type": "integer" },
+          "name": { "type": "string" },
+          "alias": { "type": "string" },
+          "city": { "type": "string" },
+          "team": { "type": "string" }
+        }
+      },
+      "Villain": {
+        "type": "object",
+        "properties": {
+          "id": { "type": "integer" },
+          "name": { "type": "string" },
+          "alias": { "type": "string" },
+          "city": { "type": "string" },
+          "team": { "type": "string" }
+        }
+      },
+      "Battle": {
+        "type": "object",
+        "properties": {
+          "id": { "type": "integer" },
+          "heroId": { "type": "integer" },
+          "villainId": { "type": "integer" },
+          "winner": { "type": "string" },
+          "date": { "type": "string", "format": "date-time" }
+        }
+      }
+    }
+  }
+} 
