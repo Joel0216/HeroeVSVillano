@@ -33,13 +33,14 @@ async function createTurnBasedTeamBattleManual(heroTeam, villainTeam) {
     const villains = await villainRepository.getVillains();
     const maxLife = 200;
     const maxShield = 100;
-    const heroTeamArr = heroTeam.map(id => {
-        const h = heroes.find(h => h.id === parseInt(id));
+    // Buscar cada personaje según su type
+    const heroTeamArr = heroTeam.map(c => {
+        const h = heroes.find(h => h.id === parseInt(c.characterId));
         if (!h) throw new Error('Algún héroe no existe');
         return { id: h.id, name: h.name, life: maxLife, maxLife, shield: maxShield, maxShield, powerBar: 0 };
     });
-    const villainTeamArr = villainTeam.map(id => {
-        const v = villains.find(v => v.id === parseInt(id));
+    const villainTeamArr = villainTeam.map(c => {
+        const v = villains.find(v => v.id === parseInt(c.characterId));
         if (!v) throw new Error('Algún villano no existe');
         return { id: v.id, name: v.name, life: maxLife, maxLife, shield: maxShield, maxShield, powerBar: 0 };
     });
@@ -69,7 +70,7 @@ async function getTurnBasedTeamBattleManual(battleId) {
 }
 
 // Lógica de ataque manual 3vs3
-async function performTeamTurnAttackManual(battleId, attackerType, attackerIndex, defenderIndex, attackType) {
+async function performTeamTurnAttackManual(battleId, attackerType, attackType) {
     const battles = await battleRepository.getBattles();
     const battle = battles.find(b => b.id === battleId && b.type === 'turn-based-teams-manual');
     if (!battle) throw new Error('Batalla por turnos de equipos manual no encontrada');
@@ -85,9 +86,10 @@ async function performTeamTurnAttackManual(battleId, attackerType, attackerIndex
     } else {
         throw new Error('attackerType debe ser "hero" o "villain"');
     }
-    const attacker = attackerTeam[attackerIndex];
-    const defender = defenderTeam[defenderIndex];
-    if (!attacker || !defender) throw new Error('Índice de atacante o defensor inválido');
+    // Buscar el primer vivo de cada equipo
+    const attacker = attackerTeam.find(c => c.life > 0);
+    const defender = defenderTeam.find(c => c.life > 0);
+    if (!attacker || !defender) throw new Error('No hay combatientes vivos para atacar');
     if (attacker.life <= 0) throw new Error('El atacante está fuera de combate');
     if (defender.life <= 0) throw new Error('El defensor ya está fuera de combate');
 

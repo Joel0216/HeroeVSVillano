@@ -37,16 +37,25 @@ router.post("/battles",
 router.post('/battles/turn-based-teams', async (req, res) => {
     try {
         const { heroTeam, villainTeam } = req.body;
+        // Nuevo formato: cada equipo es un array de objetos { characterId, type }
         if (!Array.isArray(heroTeam) || !Array.isArray(villainTeam) || heroTeam.length !== 3 || villainTeam.length !== 3) {
             return res.status(400).json({ error: 'Cada equipo debe tener exactamente 3 personajes' });
         }
-        // Validar que no haya IDs repetidos entre ambos equipos ni dentro de un mismo equipo
-        const allIds = [...heroTeam, ...villainTeam];
-        if (new Set(allIds).size !== allIds.length) {
-            return res.status(400).json({ error: 'No se pueden repetir personajes entre los equipos' });
+        // Validar que todos los objetos tengan characterId y type correcto
+        if (!heroTeam.every(c => c.characterId && c.type === 'hero')) {
+            return res.status(400).json({ error: 'Todos los héroes deben tener characterId y type "hero"' });
         }
-        if (new Set(heroTeam).size !== heroTeam.length || new Set(villainTeam).size !== villainTeam.length) {
-            return res.status(400).json({ error: 'No se pueden repetir personajes dentro de un mismo equipo' });
+        if (!villainTeam.every(c => c.characterId && c.type === 'villain')) {
+            return res.status(400).json({ error: 'Todos los villanos deben tener characterId y type "villain"' });
+        }
+        // Validar que no haya IDs repetidos dentro de un mismo equipo
+        const heroIds = heroTeam.map(c => c.characterId);
+        const villainIds = villainTeam.map(c => c.characterId);
+        if (new Set(heroIds).size !== heroIds.length) {
+            return res.status(400).json({ error: 'No se pueden repetir personajes dentro del equipo de héroes' });
+        }
+        if (new Set(villainIds).size !== villainIds.length) {
+            return res.status(400).json({ error: 'No se pueden repetir personajes dentro del equipo de villanos' });
         }
         const battle = await battleService.createTurnBasedTeamBattleManual(heroTeam, villainTeam);
         res.status(201).json(battle);
@@ -70,7 +79,7 @@ router.get('/battles/turn-based-teams/:battleId', async (req, res) => {
 router.post('/battles/turn-based-teams/:battleId/attack', async (req, res) => {
     try {
         const { battleId } = req.params;
-        const { attackerType, attackerIndex, defenderIndex, attackType } = req.body;
+        const { attackerType, attackType } = req.body;
         if (!['hero', 'villain'].includes(attackerType)) {
             return res.status(400).json({ error: 'attackerType debe ser "hero" o "villain"' });
         }
@@ -80,8 +89,6 @@ router.post('/battles/turn-based-teams/:battleId/attack', async (req, res) => {
         const result = await battleService.performTeamTurnAttackManual(
             parseInt(battleId),
             attackerType,
-            attackerIndex,
-            defenderIndex,
             attackType
         );
         res.json(result);

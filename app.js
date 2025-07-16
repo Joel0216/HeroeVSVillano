@@ -1,4 +1,5 @@
 import express from 'express';
+import cors from 'cors';
 import heroController from './controllers/heroController.js';
 import villainController from './controllers/villainController.js';
 import battleController from './controllers/battleController.js';
@@ -8,7 +9,7 @@ import fs from 'fs';
 const swaggerDocument = JSON.parse(fs.readFileSync('./swagger.json', 'utf-8'));
 
 const app = express();
-
+app.use(cors());
 app.use(express.json());
 app.use('/api', heroController);
 app.use('/api', villainController);

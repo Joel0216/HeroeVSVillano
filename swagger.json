@@ -165,16 +165,40 @@
                 "properties": {
                   "heroTeam": {
                     "type": "array",
-                    "items": { "type": "integer" },
-                    "example": [1, 2, 3]
+                    "items": {
+                      "type": "object",
+                      "properties": {
+                        "characterId": { "type": "integer", "example": 1 },
+                        "type": { "type": "string", "example": "hero" }
+                      },
+                      "required": ["characterId", "type"]
+                    }
                   },
                   "villainTeam": {
                     "type": "array",
-                    "items": { "type": "integer" },
-                    "example": [4, 5, 6]
+                    "items": {
+                      "type": "object",
+                      "properties": {
+                        "characterId": { "type": "integer", "example": 1 },
+                        "type": { "type": "string", "example": "villain" }
+                      },
+                      "required": ["characterId", "type"]
+                    }
                   }
                 },
-                "required": ["heroTeam", "villainTeam"]
+                "required": ["heroTeam", "villainTeam"],
+                "example": {
+                  "heroTeam": [
+                    {"characterId": 1, "type": "hero"},
+                    {"characterId": 2, "type": "hero"},
+                    {"characterId": 3, "type": "hero"}
+                  ],
+                  "villainTeam": [
+                    {"characterId": 1, "type": "villain"},
+                    {"characterId": 2, "type": "villain"},
+                    {"characterId": 3, "type": "villain"}
+                  ]
+                }
               }
             }
           }
@@ -235,12 +259,14 @@
               "schema": {
                 "type": "object",
                 "properties": {
-                  "attackerType": { "type": "string", "enum": ["hero", "villain"] },
-                  "attackerIndex": { "type": "integer" },
-                  "defenderIndex": { "type": "integer" },
-                  "attackType": { "type": "string", "enum": ["basic", "special"] }
+                  "attackerType": { "type": "string", "example": "hero" },
+                  "attackType": { "type": "string", "example": "basic" }
                 },
-                "required": ["attackerType", "attackerIndex", "defenderIndex", "attackType"]
+                "required": ["attackerType", "attackType"],
+                "example": {
+                  "attackerType": "hero",
+                  "attackType": "basic"
+                }
               }
             }
           }
