@@ -1,0 +1,23 @@
+[
+  {
+    "id": 1,
+    "name": "Joker",
+    "alias": "Jack Napier",
+    "city": "Gotham City",
+    "team": "Rogues Gallery"
+  },
+  {
+    "id": 2,
+    "name": "Lex Luthor",
+    "alias": "Alexander Luthor",
+    "city": "Metropolis",
+    "team": "Legion of Doom"
+  },
+  {
+    "id": 3,
+    "name": "Green Goblin",
+    "alias": "Norman Osborn",
+    "city": "New York",
+    "team": "Sinister Six"
+  }
+] 

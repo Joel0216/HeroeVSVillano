@@ -33,4 +33,61 @@ router.post("/battles",
         }
     });
 
+// POST para crear batalla 3vs3 manual (formato recomendado)
+router.post('/battles/turn-based-teams', async (req, res) => {
+    try {
+        const { heroTeam, villainTeam } = req.body;
+        if (!Array.isArray(heroTeam) || !Array.isArray(villainTeam) || heroTeam.length !== 3 || villainTeam.length !== 3) {
+            return res.status(400).json({ error: 'Cada equipo debe tener exactamente 3 personajes' });
+        }
+        // Validar que no haya IDs repetidos entre ambos equipos ni dentro de un mismo equipo
+        const allIds = [...heroTeam, ...villainTeam];
+        if (new Set(allIds).size !== allIds.length) {
+            return res.status(400).json({ error: 'No se pueden repetir personajes entre los equipos' });
+        }
+        if (new Set(heroTeam).size !== heroTeam.length || new Set(villainTeam).size !== villainTeam.length) {
+            return res.status(400).json({ error: 'No se pueden repetir personajes dentro de un mismo equipo' });
+        }
+        const battle = await battleService.createTurnBasedTeamBattleManual(heroTeam, villainTeam);
+        res.status(201).json(battle);
+    } catch (error) {
+        res.status(400).json({ error: error.message });
+    }
+});
+
+// GET para obtener el estado de una batalla 3vs3 manual por ID
+router.get('/battles/turn-based-teams/:battleId', async (req, res) => {
+    try {
+        const { battleId } = req.params;
+        const battle = await battleService.getTurnBasedTeamBattleManual(parseInt(battleId));
+        res.json(battle);
+    } catch (error) {
+        res.status(404).json({ error: error.message });
+    }
+});
+
+// POST para realizar un ataque manual en batalla 3vs3
+router.post('/battles/turn-based-teams/:battleId/attack', async (req, res) => {
+    try {
+        const { battleId } = req.params;
+        const { attackerType, attackerIndex, defenderIndex, attackType } = req.body;
+        if (!['hero', 'villain'].includes(attackerType)) {
+            return res.status(400).json({ error: 'attackerType debe ser "hero" o "villain"' });
+        }
+        if (!['basic', 'special'].includes(attackType)) {
+            return res.status(400).json({ error: 'attackType debe ser "basic" o "special"' });
+        }
+        const result = await battleService.performTeamTurnAttackManual(
+            parseInt(battleId),
+            attackerType,
+            attackerIndex,
+            defenderIndex,
+            attackType
+        );
+        res.json(result);
+    } catch (error) {
+        res.status(400).json({ error: error.message });
+    }
+});
+
 export default router; 

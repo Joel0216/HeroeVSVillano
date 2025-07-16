@@ -151,6 +151,112 @@
           "201": { "description": "Enfrentamiento creado" }
         }
       }
+    },
+    "/api/battles/turn-based-teams": {
+      "post": {
+        "summary": "Crear batalla 3vs3 manual",
+        "description": "Crea una batalla 3vs3 entre equipos de héroes y villanos.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "heroTeam": {
+                    "type": "array",
+                    "items": { "type": "integer" },
+                    "example": [1, 2, 3]
+                  },
+                  "villainTeam": {
+                    "type": "array",
+                    "items": { "type": "integer" },
+                    "example": [4, 5, 6]
+                  }
+                },
+                "required": ["heroTeam", "villainTeam"]
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Batalla creada",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/TurnBasedTeamBattle" }
+              }
+            }
+          },
+          "400": { "description": "Datos inválidos" }
+        }
+      }
+    },
+    "/api/battles/turn-based-teams/{battleId}": {
+      "get": {
+        "summary": "Obtener batalla 3vs3 manual por ID",
+        "parameters": [
+          {
+            "name": "battleId",
+            "in": "path",
+            "required": true,
+            "schema": { "type": "integer" }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Estado de la batalla",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/TurnBasedTeamBattle" }
+              }
+            }
+          },
+          "404": { "description": "Batalla no encontrada" }
+        }
+      }
+    },
+    "/api/battles/turn-based-teams/{battleId}/attack": {
+      "post": {
+        "summary": "Realizar ataque manual en batalla 3vs3",
+        "description": "Permite que un personaje de un equipo ataque a un personaje del equipo contrario. El ataque puede ser básico o especial.",
+        "parameters": [
+          {
+            "name": "battleId",
+            "in": "path",
+            "required": true,
+            "schema": { "type": "integer" }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "attackerType": { "type": "string", "enum": ["hero", "villain"] },
+                  "attackerIndex": { "type": "integer" },
+                  "defenderIndex": { "type": "integer" },
+                  "attackType": { "type": "string", "enum": ["basic", "special"] }
+                },
+                "required": ["attackerType", "attackerIndex", "defenderIndex", "attackType"]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Resultado del ataque",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/TurnBasedTeamBattle" }
+              }
+            }
+          },
+          "400": { "description": "Datos inválidos" }
+        }
+      }
     }
   },
   "components": {
@@ -182,6 +288,50 @@
           "heroId": { "type": "integer" },
           "villainId": { "type": "integer" },
           "winner": { "type": "string" },
+          "date": { "type": "string", "format": "date-time" }
+        }
+      },
+      "TurnBasedTeamBattle": {
+        "type": "object",
+        "properties": {
+          "id": { "type": "integer" },
+          "type": { "type": "string", "example": "turn-based-teams-manual" },
+          "heroTeam": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "id": { "type": "integer" },
+                "name": { "type": "string" },
+                "life": { "type": "integer" },
+                "maxLife": { "type": "integer" },
+                "shield": { "type": "integer" },
+                "maxShield": { "type": "integer" },
+                "powerBar": { "type": "integer" }
+              }
+            }
+          },
+          "villainTeam": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "id": { "type": "integer" },
+                "name": { "type": "string" },
+                "life": { "type": "integer" },
+                "maxLife": { "type": "integer" },
+                "shield": { "type": "integer" },
+                "maxShield": { "type": "integer" },
+                "powerBar": { "type": "integer" }
+              }
+            }
+          },
+          "turns": {
+            "type": "array",
+            "items": { "type": "object" }
+          },
+          "status": { "type": "string" },
+          "winner": { "type": ["string", "null"] },
           "date": { "type": "string", "format": "date-time" }
         }
       }
