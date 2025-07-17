@@ -1,13 +1,10 @@
 import mongoose from 'mongoose';
 
-const MONGO_URI = 'mongodb+srv://Joel:080406Joel@cluster0.l4feayw.mongodb.net/test?retryWrites=true&w=majority';
+const MONGO_URI = process.env.MONGODB_URI || 'mongodb+srv://Joel:080406Joel@cluster0.l4feayw.mongodb.net/test?retryWrites=true&w=majority';
 
 export const connectDB = async () => {
   try {
-    await mongoose.connect(MONGO_URI, {
-      useNewUrlParser: true,
-      useUnifiedTopology: true,
-    });
+    await mongoose.connect(MONGO_URI);
     console.log('🟢 Conexión a MongoDB Atlas exitosa');
     console.log('📊 Base de datos: test');
   } catch (error) {
