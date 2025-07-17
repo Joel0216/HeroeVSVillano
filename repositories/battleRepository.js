@@ -1,14 +1,35 @@
-let battles = [];
+import Battle from '../models/battleModel.js';
 
 async function getBattles() {
-    return battles;
+    return await Battle.find();
 }
 
-async function saveBattles(newBattles) {
-    battles = newBattles;
+async function saveBattle(battleData) {
+    const battle = new Battle(battleData);
+    return await battle.save();
+}
+
+async function updateBattle(id, updatedData) {
+    return await Battle.findOneAndUpdate({ id: parseInt(id) }, updatedData, { new: true });
+}
+
+async function deleteBattle(id) {
+    return await Battle.findOneAndDelete({ id: parseInt(id) });
+}
+
+async function getBattleById(id) {
+    return await Battle.findOne({ id: parseInt(id) });
+}
+
+async function getBattlesByUserId(userId) {
+    return await Battle.find({ userId });
 }
 
 export default {
     getBattles,
-    saveBattles
+    saveBattle,
+    updateBattle,
+    deleteBattle,
+    getBattleById,
+    getBattlesByUserId
 }; 

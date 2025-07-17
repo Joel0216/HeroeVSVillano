@@ -1,0 +1,32 @@
+{
+  "userId": "1752722412942",
+  "heroes": [
+    {
+      "id": 1,
+      "name": "Spider-Man",
+      "alias": "Peter Parker",
+      "city": "Nueva York",
+      "team": "Avengers",
+      "createdAt": "2025-07-17T03:22:06.798Z"
+    },
+    {
+      "id": 2,
+      "name": "Iron Man",
+      "alias": "Tony Stark",
+      "city": "Malibú",
+      "team": "Avengers",
+      "createdAt": "2025-07-17T03:22:16.884Z"
+    },
+    {
+      "id": 3,
+      "name": "Wonder Woman",
+      "alias": "Diana Prince",
+      "city": "Themyscira",
+      "team": "Justice League",
+      "createdAt": "2025-07-17T03:22:23.335Z"
+    }
+  ],
+  "villains": [],
+  "battles": [],
+  "createdAt": "2025-07-17T03:20:12.942Z"
+}

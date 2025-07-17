@@ -8,10 +8,86 @@
   "servers": [
     { "url": "http://localhost:3001" }
   ],
+  "components": {
+    "securitySchemes": {
+      "Bearer": {
+        "type": "apiKey",
+        "name": "Authorization",
+        "in": "header",
+        "description": "Ingresa tu token JWT como: Bearer tu_token_aqui"
+      }
+    }
+  },
+  "security": [
+    { "Bearer": [] }
+  ],
   "paths": {
+    "/api/register": {
+      "post": {
+        "summary": "Registrar usuario",
+        "tags": ["Auth"],
+        "security": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "username": { "type": "string" },
+                  "password": { "type": "string" }
+                },
+                "required": ["username", "password"]
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": { "description": "Usuario registrado" }
+        }
+      }
+    },
+    "/api/login": {
+      "post": {
+        "summary": "Iniciar sesión",
+        "tags": ["Auth"],
+        "security": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "username": { "type": "string" },
+                  "password": { "type": "string" }
+                },
+                "required": ["username", "password"]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Token JWT",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "token": { "type": "string" }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/heroes": {
       "get": {
         "summary": "Obtener todos los héroes",
+        "tags": ["Héroes"],
         "responses": {
           "200": {
             "description": "Lista de héroes",
@@ -20,11 +96,15 @@
                 "schema": { "type": "array", "items": { "$ref": "#/components/schemas/Hero" } }
               }
             }
+          },
+          "401": {
+            "description": "Token requerido"
           }
         }
       },
       "post": {
         "summary": "Crear un héroe",
+        "tags": ["Héroes"],
         "requestBody": {
           "required": true,
           "content": {
@@ -34,15 +114,19 @@
           }
         },
         "responses": {
-          "201": { "description": "Héroe creado" }
+          "201": { "description": "Héroe creado" },
+          "401": {
+            "description": "Token requerido"
+          }
         }
       }
     },
     "/api/heroes/{id}": {
       "put": {
         "summary": "Actualizar un héroe",
+        "tags": ["Héroes"],
         "parameters": [
-          { "name": "id", "in": "path", "required": true, "schema": { "type": "integer" } }
+          { "name": "id", "in": "path", "required": true, "schema": { "type": "string" } }
         ],
         "requestBody": {
           "required": true,
@@ -52,19 +136,31 @@
             }
           }
         },
-        "responses": { "200": { "description": "Héroe actualizado" } }
+        "responses": { 
+          "200": { "description": "Héroe actualizado" },
+          "401": {
+            "description": "Token requerido"
+          }
+        }
       },
       "delete": {
         "summary": "Eliminar un héroe",
+        "tags": ["Héroes"],
         "parameters": [
-          { "name": "id", "in": "path", "required": true, "schema": { "type": "integer" } }
+          { "name": "id", "in": "path", "required": true, "schema": { "type": "string" } }
         ],
-        "responses": { "200": { "description": "Héroe eliminado" } }
+        "responses": { 
+          "200": { "description": "Héroe eliminado" },
+          "401": {
+            "description": "Token requerido"
+          }
+        }
       }
     },
     "/api/villains": {
       "get": {
         "summary": "Obtener todos los villanos",
+        "tags": ["Villanos"],
         "responses": {
           "200": {
             "description": "Lista de villanos",
@@ -73,11 +169,15 @@
                 "schema": { "type": "array", "items": { "$ref": "#/components/schemas/Villain" } }
               }
             }
+          },
+          "401": {
+            "description": "Token requerido"
           }
         }
       },
       "post": {
         "summary": "Crear un villano",
+        "tags": ["Villanos"],
         "requestBody": {
           "required": true,
           "content": {
@@ -87,15 +187,19 @@
           }
         },
         "responses": {
-          "201": { "description": "Villano creado" }
+          "201": { "description": "Villano creado" },
+          "401": {
+            "description": "Token requerido"
+          }
         }
       }
     },
     "/api/villains/{id}": {
       "put": {
         "summary": "Actualizar un villano",
+        "tags": ["Villanos"],
         "parameters": [
-          { "name": "id", "in": "path", "required": true, "schema": { "type": "integer" } }
+          { "name": "id", "in": "path", "required": true, "schema": { "type": "string" } }
         ],
         "requestBody": {
           "required": true,
@@ -105,19 +209,31 @@
             }
           }
         },
-        "responses": { "200": { "description": "Villano actualizado" } }
+        "responses": { 
+          "200": { "description": "Villano actualizado" },
+          "401": {
+            "description": "Token requerido"
+          }
+        }
       },
       "delete": {
         "summary": "Eliminar un villano",
+        "tags": ["Villanos"],
         "parameters": [
-          { "name": "id", "in": "path", "required": true, "schema": { "type": "integer" } }
+          { "name": "id", "in": "path", "required": true, "schema": { "type": "string" } }
         ],
-        "responses": { "200": { "description": "Villano eliminado" } }
+        "responses": { 
+          "200": { "description": "Villano eliminado" },
+          "401": {
+            "description": "Token requerido"
+          }
+        }
       }
     },
     "/api/battles": {
       "get": {
         "summary": "Obtener todos los enfrentamientos",
+        "tags": ["Batallas"],
         "responses": {
           "200": {
             "description": "Lista de enfrentamientos",
@@ -126,11 +242,15 @@
                 "schema": { "type": "array", "items": { "$ref": "#/components/schemas/Battle" } }
               }
             }
+          },
+          "401": {
+            "description": "Token requerido"
           }
         }
       },
       "post": {
         "summary": "Crear un enfrentamiento",
+        "tags": ["Batallas"],
         "requestBody": {
           "required": true,
           "content": {
@@ -138,9 +258,12 @@
               "schema": {
                 "type": "object",
                 "properties": {
-                  "heroId": { "type": "integer" },
-                  "villainId": { "type": "integer" },
-                  "winner": { "type": "string", "enum": ["hero", "villain"] }
+                  "heroId": { "type": "string" },
+                  "villainId": { "type": "string" },
+                  "winner": { 
+                    "type": "string",
+                    "enum": ["hero", "villain"]
+                  }
                 },
                 "required": ["heroId", "villainId", "winner"]
               }
@@ -148,7 +271,10 @@
           }
         },
         "responses": {
-          "201": { "description": "Enfrentamiento creado" }
+          "201": { "description": "Enfrentamiento creado" },
+          "401": {
+            "description": "Token requerido"
+          }
         }
       }
     },
@@ -290,32 +416,34 @@
       "Hero": {
         "type": "object",
         "properties": {
-          "id": { "type": "integer" },
           "name": { "type": "string" },
           "alias": { "type": "string" },
           "city": { "type": "string" },
           "team": { "type": "string" }
-        }
+        },
+        "required": ["name", "alias"]
       },
       "Villain": {
         "type": "object",
         "properties": {
-          "id": { "type": "integer" },
           "name": { "type": "string" },
           "alias": { "type": "string" },
           "city": { "type": "string" },
           "team": { "type": "string" }
-        }
+        },
+        "required": ["name", "alias"]
       },
       "Battle": {
         "type": "object",
         "properties": {
-          "id": { "type": "integer" },
-          "heroId": { "type": "integer" },
-          "villainId": { "type": "integer" },
-          "winner": { "type": "string" },
-          "date": { "type": "string", "format": "date-time" }
-        }
+          "heroId": { "type": "string" },
+          "villainId": { "type": "string" },
+          "winner": { 
+            "type": "string",
+            "enum": ["hero", "villain"]
+          }
+        },
+        "required": ["heroId", "villainId", "winner"]
       },
       "TurnBasedTeamBattle": {
         "type": "object",
@@ -360,6 +488,14 @@
           "winner": { "type": ["string", "null"] },
           "date": { "type": "string", "format": "date-time" }
         }
+      }
+    },
+    "securitySchemes": {
+      "Bearer": {
+        "type": "apiKey",
+        "name": "Authorization",
+        "in": "header",
+        "description": "Ingresa tu token JWT como: Bearer tu_token_aqui"
       }
     }
   }

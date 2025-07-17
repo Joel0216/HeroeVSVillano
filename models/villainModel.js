@@ -1,11 +1,28 @@
-class Villain {
-    constructor(id, name, alias, city, team) {
-        this.id = id;
-        this.name = name;
-        this.alias = alias;
-        this.city = city;
-        this.team = team;
-    }
-}
+import mongoose from 'mongoose';
 
-export default Villain; 
+let autoIncrement = 1;
+
+const villainSchema = new mongoose.Schema({
+  id: { type: Number, unique: true },
+  name: { type: String, required: true },
+  alias: { type: String, required: true },
+  city: { type: String, required: true },
+  team: { type: String, required: true },
+  userId: { type: String, required: true }
+});
+
+villainSchema.pre('save', async function(next) {
+  if (this.id == null) {
+    try {
+      const last = await this.constructor.findOne().sort('-id');
+      this.id = last && last.id ? last.id + 1 : 1;
+      next();
+    } catch (err) {
+      next(err);
+    }
+  } else {
+    next();
+  }
+});
+
+export default mongoose.model('Villain', villainSchema); 

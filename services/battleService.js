@@ -1,10 +1,9 @@
 import battleRepository from '../repositories/battleRepository.js';
 import heroRepository from '../repositories/heroRepository.js';
 import villainRepository from '../repositories/villainRepository.js';
-import Battle from '../models/battleModel.js';
 
-async function getAllBattles() {
-    return await battleRepository.getBattles();
+async function getAllBattles(userId) {
+    return await battleRepository.getBattlesByUserId(userId);
 }
 
 async function addBattle(heroId, villainId, winner) {
@@ -15,116 +14,140 @@ async function addBattle(heroId, villainId, winner) {
     const villain = villains.find(v => v.id === parseInt(villainId));
     if (!hero) throw new Error('Héroe no encontrado');
     if (!villain) throw new Error('Villano no encontrado');
-    // Validar que no sea heroe vs heroe ni villano vs villano
     if (heroId === villainId) throw new Error('No se permite enfrentamiento entre el mismo personaje');
-    // Validar ganador válido
     if (winner !== 'hero' && winner !== 'villain') throw new Error('El ganador debe ser "hero" o "villain"');
     const battles = await battleRepository.getBattles();
     const newId = battles.length > 0 ? Math.max(...battles.map(b => b.id)) + 1 : 1;
-    const battle = new Battle(newId, heroId, villainId, winner, new Date().toISOString());
-    battles.push(battle);
-    await battleRepository.saveBattles(battles);
-    return battle;
+    const battleData = { id: newId, heroId, villainId, winner, date: new Date().toISOString() };
+    return await battleRepository.saveBattle(battleData);
 }
 
-// Crear batalla 3vs3 manual
-async function createTurnBasedTeamBattleManual(heroTeam, villainTeam) {
-    const heroes = await heroRepository.getHeroes();
-    const villains = await villainRepository.getVillains();
-    const maxLife = 200;
-    const maxShield = 100;
-    // Buscar cada personaje según su type
-    const heroTeamArr = heroTeam.map(c => {
-        const h = heroes.find(h => h.id === parseInt(c.characterId));
-        if (!h) throw new Error('Algún héroe no existe');
-        return { id: h.id, name: h.name, life: maxLife, maxLife, shield: maxShield, maxShield, powerBar: 0 };
-    });
-    const villainTeamArr = villainTeam.map(c => {
-        const v = villains.find(v => v.id === parseInt(c.characterId));
-        if (!v) throw new Error('Algún villano no existe');
-        return { id: v.id, name: v.name, life: maxLife, maxLife, shield: maxShield, maxShield, powerBar: 0 };
-    });
-    const battles = await battleRepository.getBattles();
-    const newId = battles.length > 0 ? Math.max(...battles.map(b => b.id)) + 1 : 1;
-    const battle = {
+async function createTurnBasedTeamBattleManual(heroTeam, villainTeam, userId) {
+    // El id de la batalla siempre será 1
+    const newId = 1;
+    // Obtener todos los héroes y villanos para buscar los nombres
+    const allHeroes = await heroRepository.getHeroes();
+    const allVillains = await villainRepository.getVillains();
+    // Validar que todos los héroes existen
+    for (const member of heroTeam) {
+        const hero = allHeroes.find(h => h.id === member.characterId);
+        if (!hero) throw new Error(`Héroe con id ${member.characterId} no encontrado`);
+    }
+    // Validar que todos los villanos existen
+    for (const member of villainTeam) {
+        const villain = allVillains.find(v => v.id === member.characterId);
+        if (!villain) throw new Error(`Villano con id ${member.characterId} no encontrado`);
+    }
+    // Inicializar los equipos con nombre, vida, escudo y barra de poder
+    const initHero = (member) => {
+        const hero = allHeroes.find(h => h.id === member.characterId);
+        return {
+            id: member.characterId,
+            name: hero ? hero.name : '',
+            life: 200,
+            maxLife: 200,
+            shield: 100,
+            maxShield: 100,
+            powerBar: 0
+        };
+    };
+    const initVillain = (member) => {
+        const villain = allVillains.find(v => v.id === member.characterId);
+        return {
+            id: member.characterId,
+            name: villain ? villain.name : '',
+            life: 200,
+            maxLife: 200,
+            shield: 100,
+            maxShield: 100,
+            powerBar: 0
+        };
+    };
+    const fullHeroTeam = heroTeam.map(initHero);
+    const fullVillainTeam = villainTeam.map(initVillain);
+    const battleData = {
         id: newId,
+        userId,
         type: 'turn-based-teams-manual',
-        heroTeam: heroTeamArr,
-        villainTeam: villainTeamArr,
+        heroTeam: fullHeroTeam,
+        villainTeam: fullVillainTeam,
+        currentHeroIndex: 0,
+        currentVillainIndex: 0,
+        currentTurn: 'hero',
         turns: [],
         status: 'active',
         winner: null,
         date: new Date().toISOString()
     };
-    battles.push(battle);
-    await battleRepository.saveBattles(battles);
-    return battle;
+    return await battleRepository.saveBattle(battleData);
 }
 
-// Obtener batalla 3vs3 manual por ID
-async function getTurnBasedTeamBattleManual(battleId) {
-    const battles = await battleRepository.getBattles();
-    const battle = battles.find(b => b.id === battleId && b.type === 'turn-based-teams-manual');
-    if (!battle) throw new Error('Batalla por turnos de equipos manual no encontrada');
-    return battle;
-}
-
-// Lógica de ataque manual 3vs3
 async function performTeamTurnAttackManual(battleId, attackerType, attackType) {
+    // Buscar la batalla
     const battles = await battleRepository.getBattles();
-    const battle = battles.find(b => b.id === battleId && b.type === 'turn-based-teams-manual');
-    if (!battle) throw new Error('Batalla por turnos de equipos manual no encontrada');
-    if (battle.status === 'finished') throw new Error('La batalla ya ha terminado');
+    const battle = battles.find(b => b.id === battleId);
+    if (!battle) throw new Error('Batalla no encontrada');
+    if (battle.status !== 'active') throw new Error('La batalla ya terminó');
 
-    let attackerTeam, defenderTeam;
+    // Determinar equipos y turnos
+    let attacker, defender, attackerIndex, defenderIndex;
     if (attackerType === 'hero') {
-        attackerTeam = battle.heroTeam;
-        defenderTeam = battle.villainTeam;
-    } else if (attackerType === 'villain') {
-        attackerTeam = battle.villainTeam;
-        defenderTeam = battle.heroTeam;
+        attackerIndex = battle.currentHeroIndex;
+        defenderIndex = battle.currentVillainIndex;
+        attacker = battle.heroTeam[attackerIndex];
+        defender = battle.villainTeam[defenderIndex];
     } else {
-        throw new Error('attackerType debe ser "hero" o "villain"');
-    }
-    // Buscar el primer vivo de cada equipo
-    const attacker = attackerTeam.find(c => c.life > 0);
-    const defender = defenderTeam.find(c => c.life > 0);
-    if (!attacker || !defender) throw new Error('No hay combatientes vivos para atacar');
-    if (attacker.life <= 0) throw new Error('El atacante está fuera de combate');
-    if (defender.life <= 0) throw new Error('El defensor ya está fuera de combate');
-
-    // Barra de poder: solo puede hacer especial si powerBar >= 4
-    if (attackType === 'special' && attacker.powerBar < 4) {
-        throw new Error('La barra de poder no está llena para ataque especial');
+        attackerIndex = battle.currentVillainIndex;
+        defenderIndex = battle.currentHeroIndex;
+        attacker = battle.villainTeam[attackerIndex];
+        defender = battle.heroTeam[defenderIndex];
     }
 
-    // Calcular daño
-    let damage = 0, attackDescription = '', isCritical = false;
-    if (attackType === 'basic') {
-        const criticalChance = 0.15;
-        isCritical = Math.random() < criticalChance;
-        damage = isCritical ? 35 : 15;
+    // Inicializar valores si no existen
+    attacker.powerBar = attacker.powerBar !== undefined ? attacker.powerBar : 0;
+    attacker.maxShield = attacker.maxShield !== undefined ? attacker.maxShield : 100;
+    attacker.shield = attacker.shield !== undefined ? attacker.shield : 100;
+    defender.powerBar = defender.powerBar !== undefined ? defender.powerBar : 0;
+    defender.maxShield = defender.maxShield !== undefined ? defender.maxShield : 100;
+    defender.shield = defender.shield !== undefined ? defender.shield : 100;
+
+    // Lógica de ataque mejorada
+    let damage = 15;
+    let isCritical = false;
+    let attackDescription = '';
+    let specialAvailable = attacker.powerBar === 4;
+
+    if (attackType === 'special') {
+        if (!specialAvailable) {
+            throw new Error('Golpe especial no disponible');
+        }
+        damage = 45;
+        attackDescription = '¡GOLPE ESPECIAL! (en espera que se llene la barra de poder)';
+        attacker.powerBar = 0; // Reiniciar barra
+    } else {
+        isCritical = Math.random() < 0.2;
+        if (isCritical) damage += 10;
         attackDescription = isCritical ? '¡GOLPE CRÍTICO!' : 'Ataque básico';
+        // Incrementar barra de poder solo si no es especial
         attacker.powerBar = Math.min(attacker.powerBar + 1, 4);
-    } else if (attackType === 'special') {
-        damage = 50;
-        attackDescription = '¡GOLPE ESPECIAL!';
-        attacker.powerBar = 0;
-    } else {
-        throw new Error('attackType debe ser "basic" o "special"');
+        if (attacker.powerBar === 4) {
+            attackDescription += ' (¡Golpe especial disponible!)';
+        }
     }
 
-    // Aplicar daño primero al escudo
-    let shieldDamage = Math.min(defender.shield, damage);
-    defender.shield -= shieldDamage;
-    let lifeDamage = damage - shieldDamage;
-    defender.life -= lifeDamage;
-    if (defender.shield < 0) defender.shield = 0;
-    if (defender.life < 0) defender.life = 0;
+    // Escudo absorbe primero
+    let shieldBefore = defender.shield;
+    let lifeBefore = defender.life;
+    let shieldAfter = Math.max(0, shieldBefore - damage);
+    let damageToLife = Math.max(0, damage - shieldBefore);
+    let lifeAfter = Math.max(0, lifeBefore - damageToLife);
+    defender.shield = shieldAfter;
+    defender.life = lifeAfter;
 
-    // Crear registro del turno
+    // Actualizar turno
+    const turnNumber = (battle.turns?.length || 0) + 1;
     const turn = {
-        turnNumber: battle.turns.length + 1,
+        turnNumber,
         attacker: attacker.name,
         defender: defender.name,
         attackType,
@@ -133,48 +156,56 @@ async function performTeamTurnAttackManual(battleId, attackerType, attackType) {
         attackDescription,
         attackerLife: attacker.life,
         attackerShield: attacker.shield,
+        attackerMaxShield: attacker.maxShield,
         attackerPowerBar: attacker.powerBar,
         defenderLife: defender.life,
         defenderShield: defender.shield,
+        defenderMaxShield: defender.maxShield,
         defenderPowerBar: defender.powerBar,
         timestamp: new Date().toISOString()
     };
+    battle.turns = battle.turns || [];
     battle.turns.push(turn);
 
-    // Verificar si el defensor perdió
+    // Cambiar el turno al siguiente personaje SOLO si el defensor fue derrotado
     if (defender.life <= 0) {
-        // ¿Quedan combatientes vivos en el equipo defensor?
-        const teamAlive = defenderTeam.some(c => c.life > 0);
-        if (!teamAlive) {
-            battle.status = 'finished';
-            battle.winner = attackerType === 'hero' ? 'heroTeam' : 'villainTeam';
+        if (attackerType === 'hero') {
+            battle.currentVillainIndex = (battle.currentVillainIndex + 1) % battle.villainTeam.length;
+        } else {
+            battle.currentHeroIndex = (battle.currentHeroIndex + 1) % battle.heroTeam.length;
         }
     }
+    // El turno siempre alterna entre héroe y villano
+    battle.currentTurn = attackerType === 'hero' ? 'villain' : 'hero';
 
-    await battleRepository.saveBattles(battles);
+    // Revisar si algún equipo perdió
+    const allHeroesDead = battle.heroTeam.every(h => h.life <= 0);
+    const allVillainsDead = battle.villainTeam.every(v => v.life <= 0);
+    if (allHeroesDead) {
+        battle.status = 'finished';
+        battle.winner = 'villainTeam';
+    } else if (allVillainsDead) {
+        battle.status = 'finished';
+        battle.winner = 'heroTeam';
+    }
 
-    // Verificar si hay golpe especial disponible para el atacante
-    const specialAvailable = attacker.powerBar >= 4;
+    // Guardar la batalla actualizada
+    await battleRepository.updateBattle(battleId, battle);
+    return battle;
+}
 
-    return {
-        battle: {
-            id: battle.id,
-            heroTeam: battle.heroTeam,
-            villainTeam: battle.villainTeam,
-            turns: battle.turns,
-            status: battle.status,
-            winner: battle.winner
-        },
-        turn,
-        specialAvailable,
-        message: specialAvailable ? '¡Golpe especial disponible!' : 'Continúa llenando la barra de poder'
-    };
+async function getTurnBasedTeamBattleManual(battleId, userId) {
+    const battle = await battleRepository.getBattleById(battleId);
+    if (!battle) throw new Error('Batalla no encontrada');
+    if (battle.type !== 'turn-based-teams-manual') throw new Error('La batalla no es de tipo 3vs3 manual');
+    if (battle.userId !== userId) throw new Error('No autorizado');
+    return battle;
 }
 
 export default {
     getAllBattles,
     addBattle,
     createTurnBasedTeamBattleManual,
-    getTurnBasedTeamBattleManual,
     performTeamTurnAttackManual,
+    getTurnBasedTeamBattleManual
 }; 

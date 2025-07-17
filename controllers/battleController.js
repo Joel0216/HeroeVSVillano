@@ -1,40 +1,53 @@
 import express from "express";
 import { check, validationResult } from 'express-validator';
 import battleService from "../services/battleService.js";
+import { authMiddleware } from '../middleware/auth.js';
 
 const router = express.Router();
 
-router.get("/battles", async (req, res) => {
+router.get("/battles", authMiddleware, async (req, res) => {
     try {
-        const battles = await battleService.getAllBattles();
+        const battles = await battleService.getAllBattles(req.user.id);
         res.json(battles);
     } catch (error) {
         res.status(500).json({ error: error.message });
     }
 });
 
-router.post("/battles",
-    [
-        check('heroId').isInt().withMessage('heroId debe ser un número'),
-        check('villainId').isInt().withMessage('villainId debe ser un número'),
-        check('winner').isIn(['hero', 'villain']).withMessage('winner debe ser "hero" o "villain"')
-    ],
-    async (req, res) => {
-        const errors = validationResult(req);
-        if (!errors.isEmpty()) {
-            return res.status(400).json({ error: errors.array() });
+router.post("/battles", authMiddleware, [
+    check('heroId').isInt().withMessage('heroId debe ser un número'),
+    check('villainId').isInt().withMessage('villainId debe ser un número'),
+    check('winner').isIn(['hero', 'villain']).withMessage('winner debe ser "hero" o "villain"')
+], async (req, res) => {
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) {
+        return res.status(400).json({ error: errors.array() });
+    }
+    try {
+        const { heroId, villainId, winner } = req.body;
+        const userData = getUserData(req.user.id);
+        if (!userData) {
+            return res.status(404).json({ error: 'Datos de usuario no encontrados' });
         }
-        try {
-            const { heroId, villainId, winner } = req.body;
-            const battle = await battleService.addBattle(heroId, villainId, winner);
-            res.status(201).json(battle);
-        } catch (error) {
-            res.status(400).json({ error: error.message });
-        }
-    });
+        // Autoincremento de id por usuario
+        const lastId = userData.battles.length > 0 ? Math.max(...userData.battles.map(b => b.id)) : 0;
+        const newBattle = {
+            id: lastId + 1,
+            heroId,
+            villainId,
+            winner,
+            createdAt: new Date().toISOString()
+        };
+        userData.battles.push(newBattle);
+        saveUserData(req.user.id, userData);
+        res.status(201).json(newBattle);
+    } catch (error) {
+        res.status(400).json({ error: error.message });
+    }
+});
 
 // POST para crear batalla 3vs3 manual (formato recomendado)
-router.post('/battles/turn-based-teams', async (req, res) => {
+router.post('/battles/turn-based-teams', authMiddleware, async (req, res) => {
     try {
         const { heroTeam, villainTeam } = req.body;
         // Nuevo formato: cada equipo es un array de objetos { characterId, type }
@@ -57,7 +70,7 @@ router.post('/battles/turn-based-teams', async (req, res) => {
         if (new Set(villainIds).size !== villainIds.length) {
             return res.status(400).json({ error: 'No se pueden repetir personajes dentro del equipo de villanos' });
         }
-        const battle = await battleService.createTurnBasedTeamBattleManual(heroTeam, villainTeam);
+        const battle = await battleService.createTurnBasedTeamBattleManual(heroTeam, villainTeam, req.user.id);
         res.status(201).json(battle);
     } catch (error) {
         res.status(400).json({ error: error.message });
@@ -65,10 +78,11 @@ router.post('/battles/turn-based-teams', async (req, res) => {
 });
 
 // GET para obtener el estado de una batalla 3vs3 manual por ID
-router.get('/battles/turn-based-teams/:battleId', async (req, res) => {
+router.get('/battles/turn-based-teams/:battleId', authMiddleware, async (req, res) => {
     try {
         const { battleId } = req.params;
-        const battle = await battleService.getTurnBasedTeamBattleManual(parseInt(battleId));
+        const battle = await battleService.getTurnBasedTeamBattleManual(parseInt(battleId), req.user.id);
+        if (!battle) return res.status(404).json({ error: 'No encontrado' });
         res.json(battle);
     } catch (error) {
         res.status(404).json({ error: error.message });
@@ -76,7 +90,7 @@ router.get('/battles/turn-based-teams/:battleId', async (req, res) => {
 });
 
 // POST para realizar un ataque manual en batalla 3vs3
-router.post('/battles/turn-based-teams/:battleId/attack', async (req, res) => {
+router.post('/battles/turn-based-teams/:battleId/attack', authMiddleware, async (req, res) => {
     try {
         const { battleId } = req.params;
         const { attackerType, attackType } = req.body;
@@ -89,7 +103,8 @@ router.post('/battles/turn-based-teams/:battleId/attack', async (req, res) => {
         const result = await battleService.performTeamTurnAttackManual(
             parseInt(battleId),
             attackerType,
-            attackType
+            attackType,
+            req.user.id
         );
         res.json(result);
     } catch (error) {

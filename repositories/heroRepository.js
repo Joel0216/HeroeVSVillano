@@ -1,29 +1,25 @@
-import fs from 'fs-extra'
-import Hero from '../models/heroModel.js'
-
-const filePath = './data/superheroes.json' // Verificar la ruta que tu configuraste en tu proyecto.
+import Hero from '../models/heroModel.js';
 
 async function getHeroes() {
-    try {
-        const data = await fs.readJson(filePath)
-        return data.map(hero => new Hero(
-            hero.id, hero.name, hero.alias, hero.city, hero.team
-        ))
-    } catch (error) {
-        console.error(error)
-    }
-
+    return await Hero.find();
 }
 
-async function saveHeroes(heroes) {
-    try {
-        await fs.writeJson(filePath, heroes)
-    } catch (error) {
-        console.error(error)
-    }
+async function saveHero(heroData) {
+    const hero = new Hero(heroData);
+    return await hero.save();
+}
+
+async function updateHero(id, updatedData) {
+    return await Hero.findOneAndUpdate({ id: parseInt(id) }, updatedData, { new: true });
+}
+
+async function deleteHero(id) {
+    return await Hero.findOneAndDelete({ id: parseInt(id) });
 }
 
 export default {
     getHeroes,
-    saveHeroes
-}
+    saveHero,
+    updateHero,
+    deleteHero
+};
