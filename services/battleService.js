@@ -23,8 +23,9 @@ async function addBattle(heroId, villainId, winner) {
 }
 
 async function createTurnBasedTeamBattleManual(heroTeam, villainTeam, userId) {
-    // El id de la batalla siempre será 1
-    const newId = 1;
+    // Obtener las batallas existentes del usuario
+    const userBattles = await battleRepository.getBattlesByUserId(userId);
+    const newId = userBattles.length > 0 ? Math.max(...userBattles.map(b => b.id)) + 1 : 1;
     // Obtener todos los héroes y villanos para buscar los nombres
     const allHeroes = await heroRepository.getHeroes();
     const allVillains = await villainRepository.getVillains();

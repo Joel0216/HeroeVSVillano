@@ -7,6 +7,7 @@ import jwt from 'jsonwebtoken';
 import villainService from "../services/villainService.js";
 import Villain from "../models/villainModel.js";
 import { authMiddleware } from '../middleware/auth.js';
+import { requireAdmin } from '../middleware/auth.js';
 
 const router = express.Router();
 const SECRET_KEY = 'tu_clave_secreta';
@@ -39,14 +40,14 @@ function saveUserData(userId, data) {
 
 router.get("/villains", authMiddleware, async (req, res) => {
     try {
-        const villains = await Villain.find({ userId: req.user.id });
+        const villains = await Villain.find({}); // Mostrar todos los villanos
         res.json(villains);
     } catch (error) {
         res.status(500).json({ error: error.message });
     }
 });
 
-router.post("/villains", authMiddleware, [
+router.post("/villains", authMiddleware, requireAdmin, [
     check('name').not().isEmpty().withMessage('El nombre es requerido'),
     check('alias').not().isEmpty().withMessage('El alias es requerido')
 ], async (req, res) => {
@@ -71,7 +72,7 @@ router.post("/villains", authMiddleware, [
     }
 });
 
-router.put("/villains/:id", authMiddleware, async (req, res) => {
+router.put("/villains/:id", authMiddleware, requireAdmin, async (req, res) => {
     try {
         const { id } = req.params;
         // Solo permite modificar villanos del usuario autenticado
@@ -87,7 +88,7 @@ router.put("/villains/:id", authMiddleware, async (req, res) => {
     }
 });
 
-router.delete("/villains/:id", authMiddleware, async (req, res) => {
+router.delete("/villains/:id", authMiddleware, requireAdmin, async (req, res) => {
     try {
         const { id } = req.params;
         // Solo permite eliminar villanos del usuario autenticado

@@ -5,6 +5,7 @@ import path from 'path';
 import { fileURLToPath } from 'url';
 import jwt from 'jsonwebtoken';
 import Hero from '../models/heroModel.js';
+import { requireAdmin } from '../middleware/auth.js';
 
 const router = express.Router();
 const SECRET_KEY = 'tu_clave_secreta';
@@ -56,14 +57,14 @@ function authMiddleware(req, res, next) {
 
 router.get("/heroes", authMiddleware, async (req, res) => {
     try {
-        const heroes = await Hero.find({ userId: req.user.id });
+        const heroes = await Hero.find({}); // Mostrar todos los héroes
         res.json(heroes);
     } catch (error) {
         res.status(500).json({ error: error.message });
     }
 });
 
-router.post("/heroes", authMiddleware, [
+router.post("/heroes", authMiddleware, requireAdmin, [
     check('name').not().isEmpty().withMessage('El nombre es requerido'),
     check('alias').not().isEmpty().withMessage('El alias es requerido')
 ], async (req, res) => {
@@ -88,7 +89,7 @@ router.post("/heroes", authMiddleware, [
     }
 });
 
-router.put("/heroes/:id", authMiddleware, [
+router.put("/heroes/:id", authMiddleware, requireAdmin, [
     check('name').not().isEmpty().withMessage('El nombre es requerido'),
     check('alias').not().isEmpty().withMessage('El alias es requerido')
 ], async (req, res) => {
@@ -114,7 +115,7 @@ router.put("/heroes/:id", authMiddleware, [
     }
 });
 
-router.delete("/heroes/:id", authMiddleware, async (req, res) => {
+router.delete("/heroes/:id", authMiddleware, requireAdmin, async (req, res) => {
     try {
         const { id } = req.params;
         // Solo permite eliminar héroes del usuario autenticado

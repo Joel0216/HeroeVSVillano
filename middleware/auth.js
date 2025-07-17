@@ -9,9 +9,23 @@ export function authMiddleware(req, res, next) {
   const token = authHeader.split(' ')[1];
   try {
     const payload = jwt.verify(token, SECRET_KEY);
-    req.user = { id: payload.id };
+    req.user = { id: payload.id, rol: payload.rol };
     next();
   } catch {
     res.status(401).json({ error: 'Token inválido' });
   }
+}
+
+export function requireAdmin(req, res, next) {
+  if (!req.user || req.user.rol !== 'admin') {
+    return res.status(403).json({ error: 'Acceso solo para administrador' });
+  }
+  next();
+}
+
+export function requireUsuario(req, res, next) {
+  if (!req.user || req.user.rol !== 'usuario') {
+    return res.status(403).json({ error: 'Acceso solo para usuarios' });
+  }
+  next();
 } 

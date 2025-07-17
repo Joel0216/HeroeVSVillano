@@ -13,5 +13,28 @@
     "id": "1752761409775",
     "username": "Joel1",
     "password": "$2b$10$xyF.TyTebno02pugdZq8n.Wy9jfeOlNYzobhrzjOvuToBTE4ely46"
+  },
+  {
+    "id": "1752772302896",
+    "username": "Juan",
+    "password": "$2b$10$2f8zk3BtbvtTcCNHpFRT9u/hhtWkTRoE8zw72W/j1pvvOiLZGGM/G"
+  },
+  {
+    "id": "1752773993012",
+    "username": "Joel_ADMINOFFICIAL",
+    "password": "$2b$10$AaH8Z.ZAyMj8Sp37a/I/XeKibuHvgTpec8fUU6VeR4dlvTeg.PLea",
+    "rol": "admin"
+  },
+  {
+    "id": "1752775977811",
+    "username": "Perry",
+    "password": "$2b$10$ohjU7MID2cRTg7OyU6eAt.YA.HwI.NypHWXt6bEkhL83X9tcazxnm",
+    "rol": "usuario"
+  },
+  {
+    "id": "1752776294482",
+    "username": "candace",
+    "password": "$2b$10$RQ18F0UtnmaGaVUhlrghqOJP2Z7N77mBuSbjcn0GZZpxcc2pL4GLy",
+    "rol": "usuario"
   }
 ]

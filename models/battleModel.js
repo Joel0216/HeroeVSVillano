@@ -24,7 +24,7 @@ const turnSchema = new mongoose.Schema({
 }, { _id: false });
 
 const battleSchema = new mongoose.Schema({
-  id: { type: Number, required: true, unique: true },
+  id: { type: Number, required: true },
   userId: { type: String, required: true },
   type: { type: String, required: true },
   heroTeam: [teamMemberSchema],
@@ -37,5 +37,7 @@ const battleSchema = new mongoose.Schema({
   winner: { type: String, default: null },
   date: String
 });
+
+battleSchema.index({ userId: 1, id: 1 }, { unique: true });
 
 export default mongoose.model('Battle', battleSchema); 

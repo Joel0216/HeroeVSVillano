@@ -46,6 +46,12 @@ function findUserByUsername(username) {
   return users.find(u => u.username === username);
 }
 
+// Buscar usuario por rol
+function findAdminUser() {
+  const users = readAllUsers();
+  return users.find(u => u.rol === 'admin');
+}
+
 // Función para obtener la ruta del archivo JSON de un usuario
 function getUserFilePath(userId) {
   return path.join(USERS_DIR, `${userId}.json`);
@@ -93,17 +99,26 @@ router.post('/register', async (req, res) => {
     if (findUserByUsername(username)) {
       return res.status(400).json({ error: 'El usuario ya existe' });
     }
+    let rol = 'usuario';
+    // Lógica para el admin
+    if (username === 'Joel_ADMINOFFICIAL' && password === '080406') {
+      if (findAdminUser()) {
+        return res.status(400).json({ error: 'Ya existe un administrador' });
+      }
+      rol = 'admin';
+    }
     const hashedPassword = await bcrypt.hash(password, 10);
     const userId = Date.now().toString();
     // Guardar usuario en el archivo global
     const users = readAllUsers();
-    users.push({ id: userId, username, password: hashedPassword });
+    users.push({ id: userId, username, password: hashedPassword, rol });
     saveAllUsers(users);
     // Inicializar archivo JSON para el usuario (datos de juego)
     initializeUserData(userId);
     res.status(201).json({ 
       message: 'Usuario registrado exitosamente',
-      userId: userId
+      userId: userId,
+      rol: rol
     });
   } catch (error) {
     console.error('Error en registro:', error);
@@ -122,8 +137,8 @@ router.post('/login', async (req, res) => {
     if (!user || !(await bcrypt.compare(password, user.password))) {
       return res.status(401).json({ error: 'Credenciales inválidas' });
     }
-    const token = jwt.sign({ id: user.id }, SECRET_KEY, { expiresIn: '1d' });
-    res.json({ token });
+    const token = jwt.sign({ id: user.id, rol: user.rol }, SECRET_KEY, { expiresIn: '1d' });
+    res.json({ token, rol: user.rol });
   } catch (error) {
     console.error('Error en login:', error);
     res.status(500).json({ error: 'Error interno del servidor' });

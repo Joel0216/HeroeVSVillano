@@ -16,6 +16,84 @@
         "in": "header",
         "description": "Ingresa tu token JWT como: Bearer tu_token_aqui"
       }
+    },
+    "schemas": {
+      "Hero": {
+        "type": "object",
+        "properties": {
+          "name": { "type": "string" },
+          "alias": { "type": "string" },
+          "city": { "type": "string" },
+          "team": { "type": "string" }
+        },
+        "required": ["name", "alias"]
+      },
+      "Villain": {
+        "type": "object",
+        "properties": {
+          "name": { "type": "string" },
+          "alias": { "type": "string" },
+          "city": { "type": "string" },
+          "team": { "type": "string" }
+        },
+        "required": ["name", "alias"]
+      },
+      "Battle": {
+        "type": "object",
+        "properties": {
+          "heroId": { "type": "string" },
+          "villainId": { "type": "string" },
+          "winner": { 
+            "type": "string",
+            "enum": ["hero", "villain"]
+          }
+        },
+        "required": ["heroId", "villainId", "winner"]
+      },
+      "TurnBasedTeamBattle": {
+        "type": "object",
+        "properties": {
+          "id": { "type": "integer" },
+          "type": { "type": "string", "example": "turn-based-teams-manual" },
+          "heroTeam": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "id": { "type": "integer" },
+                "name": { "type": "string" },
+                "life": { "type": "integer" },
+                "maxLife": { "type": "integer" },
+                "shield": { "type": "integer" },
+                "maxShield": { "type": "integer" },
+                "powerBar": { "type": "integer" }
+              }
+            }
+          },
+          "villainTeam": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "id": { "type": "integer" },
+                "name": { "type": "string" },
+                "life": { "type": "integer" },
+                "maxLife": { "type": "integer" },
+                "shield": { "type": "integer" },
+                "maxShield": { "type": "integer" },
+                "powerBar": { "type": "integer" }
+              }
+            }
+          },
+          "turns": {
+            "type": "array",
+            "items": { "type": "object" }
+          },
+          "status": { "type": "string" },
+          "winner": { "type": ["string", "null"] },
+          "date": { "type": "string", "format": "date-time" }
+        }
+      }
     }
   },
   "security": [
@@ -408,94 +486,6 @@
           },
           "400": { "description": "Datos inválidos" }
         }
-      }
-    }
-  },
-  "components": {
-    "schemas": {
-      "Hero": {
-        "type": "object",
-        "properties": {
-          "name": { "type": "string" },
-          "alias": { "type": "string" },
-          "city": { "type": "string" },
-          "team": { "type": "string" }
-        },
-        "required": ["name", "alias"]
-      },
-      "Villain": {
-        "type": "object",
-        "properties": {
-          "name": { "type": "string" },
-          "alias": { "type": "string" },
-          "city": { "type": "string" },
-          "team": { "type": "string" }
-        },
-        "required": ["name", "alias"]
-      },
-      "Battle": {
-        "type": "object",
-        "properties": {
-          "heroId": { "type": "string" },
-          "villainId": { "type": "string" },
-          "winner": { 
-            "type": "string",
-            "enum": ["hero", "villain"]
-          }
-        },
-        "required": ["heroId", "villainId", "winner"]
-      },
-      "TurnBasedTeamBattle": {
-        "type": "object",
-        "properties": {
-          "id": { "type": "integer" },
-          "type": { "type": "string", "example": "turn-based-teams-manual" },
-          "heroTeam": {
-            "type": "array",
-            "items": {
-              "type": "object",
-              "properties": {
-                "id": { "type": "integer" },
-                "name": { "type": "string" },
-                "life": { "type": "integer" },
-                "maxLife": { "type": "integer" },
-                "shield": { "type": "integer" },
-                "maxShield": { "type": "integer" },
-                "powerBar": { "type": "integer" }
-              }
-            }
-          },
-          "villainTeam": {
-            "type": "array",
-            "items": {
-              "type": "object",
-              "properties": {
-                "id": { "type": "integer" },
-                "name": { "type": "string" },
-                "life": { "type": "integer" },
-                "maxLife": { "type": "integer" },
-                "shield": { "type": "integer" },
-                "maxShield": { "type": "integer" },
-                "powerBar": { "type": "integer" }
-              }
-            }
-          },
-          "turns": {
-            "type": "array",
-            "items": { "type": "object" }
-          },
-          "status": { "type": "string" },
-          "winner": { "type": ["string", "null"] },
-          "date": { "type": "string", "format": "date-time" }
-        }
-      }
-    },
-    "securitySchemes": {
-      "Bearer": {
-        "type": "apiKey",
-        "name": "Authorization",
-        "in": "header",
-        "description": "Ingresa tu token JWT como: Bearer tu_token_aqui"
       }
     }
   }
