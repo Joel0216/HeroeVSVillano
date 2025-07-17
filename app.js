@@ -17,6 +17,9 @@ app.use('/api', authRoutes);
 app.use('/api', heroController);
 app.use('/api', villainController);
 app.use('/api', battleController);
+app.get('/', (req, res) => {
+  res.send('¡API de Héroes vs Villanos funcionando! 🚀');
+});
 app.post('/api/test', (req, res) => {
   res.json({ message: 'Funciona' });
 });
