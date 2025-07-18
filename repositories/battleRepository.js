@@ -17,8 +17,8 @@ async function deleteBattle(id) {
     return await Battle.findOneAndDelete({ id: parseInt(id) });
 }
 
-async function getBattleById(id) {
-    return await Battle.findOne({ id: parseInt(id) });
+async function getBattleById(id, userId) {
+    return await Battle.findOne({ id: parseInt(id), userId });
 }
 
 async function getBattlesByUserId(userId) {

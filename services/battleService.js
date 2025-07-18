@@ -196,10 +196,9 @@ async function performTeamTurnAttackManual(battleId, attackerType, attackType) {
 }
 
 async function getTurnBasedTeamBattleManual(battleId, userId) {
-    const battle = await battleRepository.getBattleById(battleId);
+    const battle = await battleRepository.getBattleById(battleId, userId);
     if (!battle) throw new Error('Batalla no encontrada');
     if (battle.type !== 'turn-based-teams-manual') throw new Error('La batalla no es de tipo 3vs3 manual');
-    if (battle.userId !== userId) throw new Error('No autorizado');
     return battle;
 }
 
