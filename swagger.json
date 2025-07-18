@@ -5,9 +5,10 @@
     "version": "1.0.0",
     "description": "API para gestionar superhéroes, villanos y enfrentamientos."
   },
-"servers": [
-  {
-    "url": "https://heroevsvillano.onrender.com"}
+  "servers": [
+    {
+      "url": "https://heroevsvillano.onrender.com"
+    }
   ],
   "components": {
     "securitySchemes": {

@@ -23,6 +23,15 @@ async function addBattle(heroId, villainId, winner) {
 }
 
 async function createTurnBasedTeamBattleManual(heroTeam, villainTeam, userId) {
+    // Validar que no haya IDs repetidos dentro de un mismo equipo
+    const heroIds = heroTeam.map(c => c.characterId);
+    const villainIds = villainTeam.map(c => c.characterId);
+    if (new Set(heroIds).size !== heroIds.length) {
+        throw new Error('No se pueden repetir personajes dentro del equipo de héroes');
+    }
+    if (new Set(villainIds).size !== villainIds.length) {
+        throw new Error('No se pueden repetir personajes dentro del equipo de villanos');
+    }
     // Obtener las batallas existentes del usuario
     const userBattles = await battleRepository.getBattlesByUserId(userId);
     const newId = userBattles.length > 0 ? Math.max(...userBattles.map(b => b.id)) + 1 : 1;
