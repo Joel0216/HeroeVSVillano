@@ -48,7 +48,7 @@ function authMiddleware(req, res, next) {
   const token = authHeader.split(' ')[1];
   try {
     const payload = jwt.verify(token, SECRET_KEY);
-    req.user = { id: payload.id };
+    req.user = { id: payload.id, rol: payload.rol };
     next();
   } catch (error) {
     res.status(401).json({ error: 'Token inválido' });

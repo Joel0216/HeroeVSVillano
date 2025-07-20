@@ -36,5 +36,17 @@
     "username": "candace",
     "password": "$2b$10$RQ18F0UtnmaGaVUhlrghqOJP2Z7N77mBuSbjcn0GZZpxcc2pL4GLy",
     "rol": "usuario"
+  },
+  {
+    "id": "1752991257939",
+    "username": "TestUser",
+    "password": "$2b$10$toQNQRe05v8faPx1ub7p0uH7kyrThpXS2aC30rUCI3aYq9Fd2/jP2",
+    "rol": "usuario"
+  },
+  {
+    "id": "1752991345077",
+    "username": "UsuarioNuevo123",
+    "password": "$2b$10$Kk8REEt004/afYGmCF6eFu72Rzuz6DJMOmDiY0WgX8Ffh.dzmFpoK",
+    "rol": "usuario"
   }
 ]
