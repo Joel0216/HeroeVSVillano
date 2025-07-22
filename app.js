@@ -21,7 +21,7 @@ app.post('/api/test', (req, res) => {
   res.json({ message: 'Funciona' });
 });
 app.get('/', (req, res) => {
-  res.send('¡Bienvenido a la API de Héroes vs Villanos! 🚀<br>Visita <a href="/api-docs">/api-docs</a> para la documentación Swagger.');
+  res.redirect('/api-docs');
 });
 
 // Documentación interactiva Swagger
