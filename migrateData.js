@@ -1,36 +1,30 @@
 import mongoose from 'mongoose';
-import fs from 'fs-extra';
 import Hero from './models/heroModel.js';
 import Villain from './models/villainModel.js';
 import Battle from './models/battleModel.js';
+import User from './models/User.js';
 import { connectDB } from './db.js';
 
-async function migrate() {
+async function clearAll() {
   await connectDB();
 
-  // Migrar héroes
-  const heroesData = await fs.readJson('./data/superheroes.json');
   await Hero.deleteMany({});
-  await Hero.insertMany(heroesData);
-  console.log('✅ Héroes migrados');
+  console.log('🗑️ Héroes eliminados');
 
-  // Migrar villanos
-  const villainsData = await fs.readJson('./data/villains.json');
   await Villain.deleteMany({});
-  await Villain.insertMany(villainsData);
-  console.log('✅ Villanos migrados');
+  console.log('🗑️ Villanos eliminados');
 
-  // Migrar batallas
-  const battlesData = await fs.readJson('./data/battles.json');
   await Battle.deleteMany({});
-  await Battle.insertMany(battlesData);
-  console.log('✅ Batallas migradas');
+  console.log('🗑️ Batallas eliminadas');
+
+  await User.deleteMany({});
+  console.log('🗑️ Usuarios eliminados');
 
   mongoose.connection.close();
-  console.log('🚀 Migración completada y conexión cerrada');
+  console.log('🚀 Base de datos completamente vacía');
 }
 
-migrate().catch(err => {
-  console.error('Error en la migración:', err);
+clearAll().catch(err => {
+  console.error('Error al limpiar la base de datos:', err);
   mongoose.connection.close();
 }); 
