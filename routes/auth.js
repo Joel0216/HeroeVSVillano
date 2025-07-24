@@ -10,31 +10,36 @@ const SECRET_KEY = 'tu_clave_secreta';
 // Registro
 router.post('/register', async (req, res) => {
   try {
-    console.log('Conectando a MongoDB URI:', process.env.MONGODB_URI);
     const { username, password } = req.body;
     if (!username || !password) {
       return res.status(400).json({ error: 'Faltan campos requeridos' });
     }
-    // Verificar si el usuario ya existe
-    const existingUser = await User.findOne({ username });
-    if (existingUser) {
-      return res.status(400).json({ error: 'El usuario ya existe' });
-    }
-    let rol = 'usuario';
+
+    // Normaliza el username a minúsculas
+    const normalizedUsername = username.trim().toLowerCase();
+
     // Lógica para el admin
-    if (username === 'Joel_ADMINOFFICIAL' && password === '080406') {
+    let rol = 'usuario';
+    if (normalizedUsername === 'joel_adminofficial' && password === '080406') {
       const adminExists = await User.findOne({ rol: 'admin' });
       if (adminExists) {
         return res.status(400).json({ error: 'Ya existe un administrador' });
       }
       rol = 'admin';
     }
+
+    // Verificar si el usuario ya existe
+    const existingUser = await User.findOne({ username: normalizedUsername });
+    if (existingUser) {
+      return res.status(400).json({ error: 'El usuario ya existe' });
+    }
+
     const hashedPassword = await bcrypt.hash(password, 10);
-    const nuevoUsuario = new User({ username, password: hashedPassword, rol });
+    const nuevoUsuario = new User({ username: normalizedUsername, password: hashedPassword, rol });
     await nuevoUsuario.save();
-    res.status(201).json({ 
+    res.status(201).json({
       message: 'Usuario registrado exitosamente',
-      deuserId: nuevoUsuario._id,
+      userId: nuevoUsuario._id,
       rol: rol
     });
   } catch (error) {
@@ -47,10 +52,12 @@ router.post('/register', async (req, res) => {
 router.post('/login', async (req, res) => {
   try {
     const { username, password } = req.body;
+    console.log('Intentando login con:', username);
     if (!username || !password) {
       return res.status(400).json({ error: 'Faltan campos requeridos' });
     }
     const user = await User.findOne({ username });
+    console.log('Usuario encontrado:', user);
     if (!user || !(await bcrypt.compare(password, user.password))) {
       return res.status(401).json({ error: 'Credenciales inválidas' });
     }
