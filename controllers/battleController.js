@@ -25,22 +25,8 @@ router.post("/battles", authMiddleware, [
     }
     try {
         const { heroId, villainId, winner } = req.body;
-        const userData = getUserData(req.user.id);
-        if (!userData) {
-            return res.status(404).json({ error: 'Datos de usuario no encontrados' });
-        }
-        // Autoincremento de id por usuario
-        const lastId = userData.battles.length > 0 ? Math.max(...userData.battles.map(b => b.id)) : 0;
-        const newBattle = {
-            id: lastId + 1,
-            heroId,
-            villainId,
-            winner,
-            createdAt: new Date().toISOString()
-        };
-        userData.battles.push(newBattle);
-        saveUserData(req.user.id, userData);
-        res.status(201).json(newBattle);
+        const battle = await battleService.addBattle(heroId, villainId, winner, req.user.id);
+        res.status(201).json(battle);
     } catch (error) {
         res.status(400).json({ error: error.message });
     }

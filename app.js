@@ -7,6 +7,7 @@ import swaggerUi from 'swagger-ui-express';
 import fs from 'fs';
 import { connectDB } from './db.js';
 import authRoutes from './routes/auth.js';
+import 'dotenv/config';
 
 const swaggerDocument = JSON.parse(fs.readFileSync('./swagger.json', 'utf-8'));
 

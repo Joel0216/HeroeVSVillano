@@ -1,8 +1,5 @@
 import express from "express";
 import { check, validationResult } from 'express-validator';
-import fs from 'fs';
-import path from 'path';
-import { fileURLToPath } from 'url';
 import jwt from 'jsonwebtoken';
 import Hero from '../models/heroModel.js';
 import { requireAdmin } from '../middleware/auth.js';
@@ -10,41 +7,12 @@ import { requireAdmin } from '../middleware/auth.js';
 const router = express.Router();
 const SECRET_KEY = 'tu_clave_secreta';
 
-// Obtener la ruta del directorio actual
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
-
-// Directorio para almacenar los archivos JSON de usuarios
-const USERS_DIR = path.join(__dirname, '..', 'data', 'users');
-
-// Función para obtener la ruta del archivo JSON de un usuario
-function getUserFilePath(userId) {
-  return path.join(USERS_DIR, `${userId}.json`);
-}
-
-// Función para obtener los datos de un usuario
-function getUserData(userId) {
-  const filePath = getUserFilePath(userId);
-  if (fs.existsSync(filePath)) {
-    const data = fs.readFileSync(filePath, 'utf8');
-    return JSON.parse(data);
-  }
-  return null;
-}
-
-// Función para guardar los datos de un usuario
-function saveUserData(userId, data) {
-  const filePath = getUserFilePath(userId);
-  fs.writeFileSync(filePath, JSON.stringify(data, null, 2));
-}
-
 // Middleware de autenticación simplificado
 function authMiddleware(req, res, next) {
   const authHeader = req.headers.authorization;
   if (!authHeader || !authHeader.startsWith('Bearer ')) {
     return res.status(401).json({ error: 'Token requerido' });
   }
-  
   const token = authHeader.split(' ')[1];
   try {
     const payload = jwt.verify(token, SECRET_KEY);
