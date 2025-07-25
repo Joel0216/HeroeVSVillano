@@ -1,13 +1,27 @@
 // Script para crear 3 héroes, 3 villanos y una batalla 3vs3 manualmente
 // Requiere Node.js >= 18 (fetch nativo)
 
-const API = 'http://localhost:3001/api';
+const API = 'https://heroevsvillano.onrender.com/api'; // Adaptado para Render
 const TOKEN = 'AQUI_TU_TOKEN_JWT'; // <-- Pega aquí tu token JWT válido
 
 const headers = {
-  'Content-Type': 'application/json',
-  'Authorization': `Bearer ${TOKEN}`
+  'Content-Type': 'application/json'
 };
+
+const usuario = {
+  username: 'Gaspar',
+  password: '1234'
+};
+
+async function registrarUsuario() {
+  const res = await fetch(`${API}/register`, {
+    method: 'POST',
+    headers,
+    body: JSON.stringify(usuario)
+  });
+  if (!res.ok) throw new Error(await res.text());
+  return await res.json();
+}
 
 const heroes = [
   { name: 'Solaris', alias: 'El Radiante', city: 'Ciudad Luz', team: 'Guardianes' },
@@ -38,6 +52,13 @@ async function obtener(url) {
 }
 
 async function main() {
+  // Registrar usuario antes de crear héroes y villanos
+  try {
+    const user = await registrarUsuario();
+    console.log('Usuario registrado:', user);
+  } catch (e) {
+    console.error('Error registrando usuario:', e.message);
+  }
   // Crear héroes
   for (const hero of heroes) {
     await crearEntidad(`${API}/heroes`, hero);
