@@ -40,18 +40,6 @@
         },
         "required": ["name", "alias"]
       },
-      "Battle": {
-        "type": "object",
-        "properties": {
-          "heroId": { "type": "string" },
-          "villainId": { "type": "string" },
-          "winner": { 
-            "type": "string",
-            "enum": ["hero", "villain"]
-          }
-        },
-        "required": ["heroId", "villainId", "winner"]
-      },
       "TurnBasedTeamBattle": {
         "type": "object",
         "properties": {
@@ -310,54 +298,7 @@
         }
       }
     },
-    "/api/battles": {
-      "get": {
-        "summary": "Obtener todos los enfrentamientos",
-        "tags": ["Batallas"],
-        "responses": {
-          "200": {
-            "description": "Lista de enfrentamientos",
-            "content": {
-              "application/json": {
-                "schema": { "type": "array", "items": { "$ref": "#/components/schemas/Battle" } }
-              }
-            }
-          },
-          "401": {
-            "description": "Token requerido"
-          }
-        }
-      },
-      "post": {
-        "summary": "Crear un enfrentamiento",
-        "tags": ["Batallas"],
-        "requestBody": {
-          "required": true,
-          "content": {
-            "application/json": {
-              "schema": {
-                "type": "object",
-                "properties": {
-                  "heroId": { "type": "string" },
-                  "villainId": { "type": "string" },
-                  "winner": { 
-                    "type": "string",
-                    "enum": ["hero", "villain"]
-                  }
-                },
-                "required": ["heroId", "villainId", "winner"]
-              }
-            }
-          }
-        },
-        "responses": {
-          "201": { "description": "Enfrentamiento creado" },
-          "401": {
-            "description": "Token requerido"
-          }
-        }
-      }
-    },
+
     "/api/battles/turn-based-teams": {
       "post": {
         "summary": "Crear batalla 3vs3 manual",

@@ -2,25 +2,9 @@ import battleRepository from '../repositories/battleRepository.js';
 import heroRepository from '../repositories/heroRepository.js';
 import villainRepository from '../repositories/villainRepository.js';
 
-async function getAllBattles(userId) {
-    return await battleRepository.getBattlesByUserId(userId);
-}
 
-async function addBattle(heroId, villainId, winner) {
-    // Validar que ambos existan
-    const heroes = await heroRepository.getHeroes();
-    const villains = await villainRepository.getVillains();
-    const hero = heroes.find(h => h.id === parseInt(heroId));
-    const villain = villains.find(v => v.id === parseInt(villainId));
-    if (!hero) throw new Error('Héroe no encontrado');
-    if (!villain) throw new Error('Villano no encontrado');
-    if (heroId === villainId) throw new Error('No se permite enfrentamiento entre el mismo personaje');
-    if (winner !== 'hero' && winner !== 'villain') throw new Error('El ganador debe ser "hero" o "villain"');
-    const battles = await battleRepository.getBattles();
-    const newId = battles.length > 0 ? Math.max(...battles.map(b => b.id)) + 1 : 1;
-    const battleData = { id: newId, heroId, villainId, winner, date: new Date().toISOString() };
-    return await battleRepository.saveBattle(battleData);
-}
+
+
 
 async function createTurnBasedTeamBattleManual(heroTeam, villainTeam, userId) {
     // Validar que no haya IDs repetidos dentro de un mismo equipo
@@ -212,8 +196,6 @@ async function getTurnBasedTeamBattleManual(battleId, userId) {
 }
 
 export default {
-    getAllBattles,
-    addBattle,
     createTurnBasedTeamBattleManual,
     performTeamTurnAttackManual,
     getTurnBasedTeamBattleManual
