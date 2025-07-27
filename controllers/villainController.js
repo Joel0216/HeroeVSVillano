@@ -1,74 +1,126 @@
-import express from "express";
-import { check, validationResult } from 'express-validator';
-import jwt from 'jsonwebtoken';
-import villainService from "../services/villainService.js";
-import Villain from "../models/villainModel.js";
-import { authMiddleware } from '../middleware/auth.js';
-import { requireAdmin } from '../middleware/auth.js';
+import Villain from '../models/villainModel.js';
 
-const router = express.Router();
-const SECRET_KEY = 'tu_clave_secreta';
+// Obtener todos los villanos
+const getVillains = async (req, res) => {
+  try {
+    console.log('📋 GET /villains - Usuario:', req.user);
+    const villains = await Villain.find().sort({ createdAt: -1 });
+    res.json(villains);
+  } catch (error) {
+    console.error('❌ Error al obtener villanos:', error);
+    res.status(500).json({ error: 'Error interno del servidor' });
+  }
+};
 
-router.get("/villains", authMiddleware, async (req, res) => {
-    try {
-        const villains = await Villain.find({}); // Mostrar todos los villanos
-        res.json(villains);
-    } catch (error) {
-        res.status(500).json({ error: error.message });
+// Crear un nuevo villano
+const createVillain = async (req, res) => {
+  try {
+    console.log('📋 POST /villains - Usuario:', req.user);
+    const { name, alias, city, team, image } = req.body;
+    
+    // Validar campos requeridos
+    if (!name || !alias) {
+      return res.status(400).json({ error: 'Nombre y alias son requeridos' });
     }
-});
-
-router.post("/villains", authMiddleware, requireAdmin, [
-    check('name').not().isEmpty().withMessage('El nombre es requerido'),
-    check('alias').not().isEmpty().withMessage('El alias es requerido')
-], async (req, res) => {
-    const errors = validationResult(req);
-    if(!errors.isEmpty()){
-        return res.status(400).json({ error: errors.array() });
+    
+    // Verificar si ya existe un villano con las mismas características
+    const existingVillain = await Villain.findByCharacteristics(name, alias, city, team);
+    if (existingVillain) {
+      return res.status(409).json({ 
+        error: 'Ya existe un villano con estas características',
+        existingVillain: {
+          villainId: existingVillain.villainId,
+          name: existingVillain.name,
+          alias: existingVillain.alias
+        }
+      });
     }
-    try {
-        const { name, alias, city, team } = req.body;
-        // Guardar villano en MongoDB con userId
-        const newVillain = new Villain({
-            name,
-            alias,
-            city: city || '',
-            team: team || '',
-            userId: req.user.id
-        });
-        await newVillain.save();
-        res.status(201).json(newVillain);
-    } catch (error) {
-        res.status(500).json({ error: error.message });
+    
+    // Verificar si existe un villano con el mismo nombre
+    const villainWithSameName = await Villain.findOne({ name: name });
+    if (villainWithSameName) {
+      return res.status(409).json({ 
+        error: 'Ya existe un villano con este nombre',
+        existingVillain: {
+          villainId: villainWithSameName.villainId,
+          name: villainWithSameName.name,
+          alias: villainWithSameName.alias
+        }
+      });
     }
-});
-
-router.put("/villains/:id", authMiddleware, requireAdmin, async (req, res) => {
-    try {
-        const { id } = req.params;
-        // Solo permite modificar villanos del usuario autenticado
-        const updatedVillain = await Villain.findOneAndUpdate(
-            { id: parseInt(id), userId: req.user.id },
-            req.body,
-            { new: true }
-        );
-        if (!updatedVillain) return res.status(404).json({ error: 'Villano no encontrado o no autorizado' });
-        res.json(updatedVillain);
-    } catch (error) {
-        res.status(500).json({ error: error.message });
+    
+    const villain = new Villain({
+      name,
+      alias,
+      city: city || '',
+      team: team || '',
+      image: image || '',
+      createdBy: req.user.userId
+    });
+    
+    await villain.save();
+    console.log('✅ Villano creado:', villain);
+    res.status(201).json(villain);
+  } catch (error) {
+    console.error('❌ Error al crear villano:', error);
+    if (error.code === 11000) {
+      res.status(409).json({ error: 'Error de duplicado en la base de datos' });
+    } else {
+      res.status(500).json({ error: 'Error interno del servidor' });
     }
-});
+  }
+};
 
-router.delete("/villains/:id", authMiddleware, requireAdmin, async (req, res) => {
-    try {
-        const { id } = req.params;
-        // Solo permite eliminar villanos del usuario autenticado
-        const deletedVillain = await Villain.findOneAndDelete({ id: parseInt(id), userId: req.user.id });
-        if (!deletedVillain) return res.status(404).json({ error: 'Villano no encontrado o no autorizado' });
-        res.json({ message: 'Villano eliminado', villain: deletedVillain });
-    } catch (error) {
-        res.status(500).json({ error: error.message });
+// Actualizar un villano
+const updateVillain = async (req, res) => {
+  try {
+    console.log('📋 PUT /villains - Usuario:', req.user);
+    const { villainId } = req.params;
+    const { name, alias, city, team, image } = req.body;
+    
+    console.log('📋 VillainId:', villainId);
+    
+    const villain = await Villain.findOneAndUpdate(
+      { villainId },
+      { name, alias, city, team, image },
+      { new: true, runValidators: true }
+    );
+    
+    if (!villain) {
+      return res.status(404).json({ error: 'Villano no encontrado' });
     }
-});
+    
+    console.log('✅ Villano actualizado:', villain);
+    res.json(villain);
+  } catch (error) {
+    console.error('❌ Error al actualizar villano:', error);
+    res.status(500).json({ error: 'Error interno del servidor' });
+  }
+};
 
-export default router; 
+// Eliminar un villano
+const deleteVillain = async (req, res) => {
+  try {
+    console.log('📋 DELETE /villains - Usuario:', req.user);
+    const { villainId } = req.params;
+    
+    const villain = await Villain.findOneAndDelete({ villainId });
+    
+    if (!villain) {
+      return res.status(404).json({ error: 'Villano no encontrado' });
+    }
+    
+    console.log('✅ Villano eliminado:', villain);
+    res.json({ message: 'Villano eliminado correctamente', deletedVillain: villain });
+  } catch (error) {
+    console.error('❌ Error al eliminar villano:', error);
+    res.status(500).json({ error: 'Error interno del servidor' });
+  }
+};
+
+export {
+  getVillains,
+  createVillain,
+  updateVillain,
+  deleteVillain
+}; 

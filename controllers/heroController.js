@@ -1,100 +1,126 @@
-import express from "express";
-import { check, validationResult } from 'express-validator';
-import jwt from 'jsonwebtoken';
 import Hero from '../models/heroModel.js';
-import { requireAdmin } from '../middleware/auth.js';
 
-const router = express.Router();
-const SECRET_KEY = 'tu_clave_secreta';
-
-// Middleware de autenticación simplificado
-function authMiddleware(req, res, next) {
-  const authHeader = req.headers.authorization;
-  if (!authHeader || !authHeader.startsWith('Bearer ')) {
-    return res.status(401).json({ error: 'Token requerido' });
-  }
-  const token = authHeader.split(' ')[1];
+// Obtener todos los héroes
+const getHeroes = async (req, res) => {
   try {
-    const payload = jwt.verify(token, SECRET_KEY);
-    req.user = { id: payload.id, rol: payload.rol };
-    next();
+    console.log('📋 GET /heroes - Usuario:', req.user);
+    const heroes = await Hero.find().sort({ createdAt: -1 });
+    res.json(heroes);
   } catch (error) {
-    res.status(401).json({ error: 'Token inválido' });
+    console.error('❌ Error al obtener héroes:', error);
+    res.status(500).json({ error: 'Error interno del servidor' });
   }
-}
+};
 
-router.get("/heroes", authMiddleware, async (req, res) => {
-    try {
-        const heroes = await Hero.find({}); // Mostrar todos los héroes
-        res.json(heroes);
-    } catch (error) {
-        res.status(500).json({ error: error.message });
+// Crear un nuevo héroe
+const createHero = async (req, res) => {
+  try {
+    console.log('📋 POST /heroes - Usuario:', req.user);
+    const { name, alias, city, team, image } = req.body;
+    
+    // Validar campos requeridos
+    if (!name || !alias) {
+      return res.status(400).json({ error: 'Nombre y alias son requeridos' });
     }
-});
-
-router.post("/heroes", authMiddleware, requireAdmin, [
-    check('name').not().isEmpty().withMessage('El nombre es requerido'),
-    check('alias').not().isEmpty().withMessage('El alias es requerido')
-], async (req, res) => {
-    const errors = validationResult(req);
-    if(!errors.isEmpty()){
-        return res.status(400).json({ error: errors.array() });
-    }
-    try {
-        const { name, alias, city, team } = req.body;
-        // Guardar héroe en MongoDB con userId
-        const newHero = new Hero({
-            name,
-            alias,
-            city: city || '',
-            team: team || '',
-            userId: req.user.id
-        });
-        await newHero.save();
-        res.status(201).json(newHero);
-    } catch (error) {
-        res.status(500).json({ error: error.message });
-    }
-});
-
-router.put("/heroes/:id", authMiddleware, requireAdmin, [
-    check('name').not().isEmpty().withMessage('El nombre es requerido'),
-    check('alias').not().isEmpty().withMessage('El alias es requerido')
-], async (req, res) => {
-    const errors = validationResult(req);
-    if(!errors.isEmpty()){
-        return res.status(400).json({ error: errors.array() });
-    }
-    try {
-        const { id } = req.params;
-        const { name, alias, city, team } = req.body;
-        // Solo permite modificar héroes del usuario autenticado
-        const updatedHero = await Hero.findOneAndUpdate(
-            { id: parseInt(id), userId: req.user.id },
-            { name, alias, city: city || '', team: team || '' },
-            { new: true }
-        );
-        if (!updatedHero) {
-            return res.status(404).json({ error: 'Héroe no encontrado o no autorizado' });
+    
+    // Verificar si ya existe un héroe con las mismas características
+    const existingHero = await Hero.findByCharacteristics(name, alias, city, team);
+    if (existingHero) {
+      return res.status(409).json({ 
+        error: 'Ya existe un héroe con estas características',
+        existingHero: {
+          heroId: existingHero.heroId,
+          name: existingHero.name,
+          alias: existingHero.alias
         }
-        res.json(updatedHero);
-    } catch (error) {
-        res.status(500).json({ error: error.message });
+      });
     }
-});
-
-router.delete("/heroes/:id", authMiddleware, requireAdmin, async (req, res) => {
-    try {
-        const { id } = req.params;
-        // Solo permite eliminar héroes del usuario autenticado
-        const deletedHero = await Hero.findOneAndDelete({ id: parseInt(id), userId: req.user.id });
-        if (!deletedHero) {
-            return res.status(404).json({ error: 'Héroe no encontrado o no autorizado' });
+    
+    // Verificar si existe un héroe con el mismo nombre
+    const heroWithSameName = await Hero.findOne({ name: name });
+    if (heroWithSameName) {
+      return res.status(409).json({ 
+        error: 'Ya existe un héroe con este nombre',
+        existingHero: {
+          heroId: heroWithSameName.heroId,
+          name: heroWithSameName.name,
+          alias: heroWithSameName.alias
         }
-        res.json({ message: 'Héroe eliminado exitosamente', hero: deletedHero });
-    } catch (error) {
-        res.status(500).json({ error: error.message });
+      });
     }
-});
+    
+    const hero = new Hero({
+      name,
+      alias,
+      city: city || '',
+      team: team || '',
+      image: image || '',
+      createdBy: req.user.userId
+    });
+    
+    await hero.save();
+    console.log('✅ Héroe creado:', hero);
+    res.status(201).json(hero);
+  } catch (error) {
+    console.error('❌ Error al crear héroe:', error);
+    if (error.code === 11000) {
+      res.status(409).json({ error: 'Error de duplicado en la base de datos' });
+    } else {
+      res.status(500).json({ error: 'Error interno del servidor' });
+    }
+  }
+};
 
-export default router;
+// Actualizar un héroe
+const updateHero = async (req, res) => {
+  try {
+    console.log('📋 PUT /heroes - Usuario:', req.user);
+    const { heroId } = req.params;
+    const { name, alias, city, team, image } = req.body;
+    
+    console.log('📋 HeroId:', heroId);
+    
+    const hero = await Hero.findOneAndUpdate(
+      { heroId },
+      { name, alias, city, team, image },
+      { new: true, runValidators: true }
+    );
+    
+    if (!hero) {
+      return res.status(404).json({ error: 'Héroe no encontrado' });
+    }
+    
+    console.log('✅ Héroe actualizado:', hero);
+    res.json(hero);
+  } catch (error) {
+    console.error('❌ Error al actualizar héroe:', error);
+    res.status(500).json({ error: 'Error interno del servidor' });
+  }
+};
+
+// Eliminar un héroe
+const deleteHero = async (req, res) => {
+  try {
+    console.log('📋 DELETE /heroes - Usuario:', req.user);
+    const { heroId } = req.params;
+    
+    const hero = await Hero.findOneAndDelete({ heroId });
+    
+    if (!hero) {
+      return res.status(404).json({ error: 'Héroe no encontrado' });
+    }
+    
+    console.log('✅ Héroe eliminado:', hero);
+    res.json({ message: 'Héroe eliminado correctamente', deletedHero: hero });
+  } catch (error) {
+    console.error('❌ Error al eliminar héroe:', error);
+    res.status(500).json({ error: 'Error interno del servidor' });
+  }
+};
+
+export {
+  getHeroes,
+  createHero,
+  updateHero,
+  deleteHero
+};
