@@ -140,6 +140,41 @@
       justify-content: center;
       font-size: 10px;
     }
+    
+    /* Indicador de personaje activo */
+    .active-character {
+      border: 3px solid #10b981;
+      box-shadow: 0 0 15px rgba(16, 185, 129, 0.6);
+      transform: scale(1.02);
+    }
+    
+    .active-character::before {
+      content: "⚡";
+      position: absolute;
+      top: -15px;
+      left: -15px;
+      background: #10b981;
+      color: white;
+      border-radius: 50%;
+      width: 25px;
+      height: 25px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 12px;
+      animation: activePulse 1s ease-in-out infinite alternate;
+    }
+    
+    @keyframes activePulse {
+      from {
+        transform: scale(1);
+        box-shadow: 0 0 10px rgba(16, 185, 129, 0.6);
+      }
+      to {
+        transform: scale(1.1);
+        box-shadow: 0 0 20px rgba(16, 185, 129, 0.8);
+      }
+    }
   </style>
 </head>
 <body class="h-full w-full flex flex-col items-center justify-center bg-gray-900">

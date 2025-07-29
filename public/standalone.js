@@ -920,7 +920,10 @@ function initializeBattleState() {
       maxPower: 100,
       shield: 100
     })),
-    turn: 0
+    turn: 0,
+    // Nuevas propiedades para controlar quién puede atacar
+    activeHeroIndex: 0,  // Solo el primer héroe puede atacar inicialmente
+    activeVillainIndex: 0  // Solo el primer villano puede atacar inicialmente
   };
   
   updateBattleUI();
@@ -992,13 +995,24 @@ function updateBattleUI() {
       if (card) {
         card.classList.remove('eliminated');
       }
+      
+      // Solo el héroe activo puede atacar
+      const isActiveHero = index === battleState.activeHeroIndex;
+      
       if (attackBtn) {
-        attackBtn.disabled = false;
+        attackBtn.disabled = !isActiveHero;
+        if (isActiveHero) {
+          attackBtn.classList.remove('opacity-50');
+          card.classList.add('active-character');
+        } else {
+          attackBtn.classList.add('opacity-50');
+          card.classList.remove('active-character');
+        }
       }
       
       // Habilitar/deshabilitar botón especial con animaciones
       if (specialBtn) {
-        if (hero.power >= 100) {
+        if (hero.power >= 100 && isActiveHero) {
           specialBtn.disabled = false;
           specialBtn.classList.remove('opacity-50');
           specialBtn.classList.add('special-ready');
@@ -1073,13 +1087,24 @@ function updateBattleUI() {
       if (card) {
         card.classList.remove('eliminated');
       }
+      
+      // Solo el villano activo puede atacar
+      const isActiveVillain = index === battleState.activeVillainIndex;
+      
       if (attackBtn) {
-        attackBtn.disabled = false;
+        attackBtn.disabled = !isActiveVillain;
+        if (isActiveVillain) {
+          attackBtn.classList.remove('opacity-50');
+          card.classList.add('active-character');
+        } else {
+          attackBtn.classList.add('opacity-50');
+          card.classList.remove('active-character');
+        }
       }
       
       // Habilitar/deshabilitar botón especial con animaciones
       if (specialBtn) {
-        if (villain.power >= 100) {
+        if (villain.power >= 100 && isActiveVillain) {
           specialBtn.disabled = false;
           specialBtn.classList.remove('opacity-50');
           specialBtn.classList.add('special-ready');
@@ -1211,6 +1236,15 @@ function heroAttack(heroIndex, attackType) {
       targetCard.classList.add('elimination-animation');
       setTimeout(() => targetCard.classList.remove('elimination-animation'), 500);
     }
+    
+    // Si el villano eliminado era el activo, activar el siguiente villano vivo
+    if (targetIndex === battleState.activeVillainIndex) {
+      const nextVillainIndex = battleState.villains.findIndex((v, i) => i > targetIndex && v.health > 0);
+      if (nextVillainIndex !== -1) {
+        battleState.activeVillainIndex = nextVillainIndex;
+        addBattleLog(`🔄 ${battleState.villains[nextVillainIndex].name} es ahora el villano activo!`);
+      }
+    }
   }
   
   updateBattleUI();
@@ -1298,21 +1332,30 @@ function villainAttack(villainIndex, attackType) {
   }
   addBattleLog(`🦹‍♂️ ${villain.name} ataca al ${positionText} héroe (${target.name}) con ${attackType === 'normal' ? 'Golpe' : 'Especial'} ${damageMessage}`);
   
-  // Si el héroe fue eliminado, mostrar mensaje
-  if (target.health <= 0) {
-    addBattleLog(`💀 ${target.name} ha sido eliminado!`);
-    
-    // Agregar animación de eliminación
-    const targetCard = document.querySelector(`#hero-attack-${targetIndex}`).closest('.battle-card');
-    if (targetCard) {
-      targetCard.classList.add('elimination-animation');
-      setTimeout(() => targetCard.classList.remove('elimination-animation'), 500);
+      // Si el héroe fue eliminado, mostrar mensaje
+    if (target.health <= 0) {
+      addBattleLog(`💀 ${target.name} ha sido eliminado!`);
+      
+      // Agregar animación de eliminación
+      const targetCard = document.querySelector(`#hero-attack-${targetIndex}`).closest('.battle-card');
+      if (targetCard) {
+        targetCard.classList.add('elimination-animation');
+        setTimeout(() => targetCard.classList.remove('elimination-animation'), 500);
+      }
+      
+      // Si el héroe eliminado era el activo, activar el siguiente héroe vivo
+      if (targetIndex === battleState.activeHeroIndex) {
+        const nextHeroIndex = battleState.heroes.findIndex((h, i) => i > targetIndex && h.health > 0);
+        if (nextHeroIndex !== -1) {
+          battleState.activeHeroIndex = nextHeroIndex;
+          addBattleLog(`🔄 ${battleState.heroes[nextHeroIndex].name} es ahora el héroe activo!`);
+        }
+      }
     }
+    
+    updateBattleUI();
+    checkBattleEnd();
   }
-  
-  updateBattleUI();
-  checkBattleEnd();
-}
 
 // Agregar entrada al log de batalla
 function addBattleLog(message) {
