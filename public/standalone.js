@@ -1210,6 +1210,18 @@ function heroAttack(heroIndex, attackType) {
     setTimeout(() => targetHealthBar.classList.remove('health-bar-damage'), 300);
   }
   
+  // Mostrar animación especial para héroes específicos
+  if (attackType === 'special') {
+    const heroName = hero.name.toLowerCase();
+    if (heroName.includes('iron man')) {
+      showIronManSpecialAnimation(heroIndex);
+    } else if (heroName.includes('spider') || heroName.includes('peter')) {
+      showSpiderManSpecialAnimation(heroIndex);
+    } else if (heroName.includes('captain') || heroName.includes('steve')) {
+      showCaptainAmericaSpecialAnimation(heroIndex);
+    }
+  }
+  
   // Agregar al log con información de posición
   const positionText = targetIndex === 0 ? 'primero' : targetIndex === 1 ? 'segundo' : 'tercero';
   let damageMessage = '';
@@ -1249,6 +1261,113 @@ function heroAttack(heroIndex, attackType) {
   
   updateBattleUI();
   checkBattleEnd();
+}
+
+// Función para mostrar animación especial de Iron Man
+function showIronManSpecialAnimation(heroIndex) {
+  // Crear el overlay de animación
+  const animationOverlay = document.createElement('div');
+  animationOverlay.className = 'iron-man-special';
+  
+  // Crear el contenido de la animación
+  animationOverlay.innerHTML = `
+    <div class="iron-man-animation">
+      <div class="iron-man-character">🦸‍♂️</div>
+      <div class="energy-beam"></div>
+      <div class="energy-ring"></div>
+      <div class="energy-streaks">
+        ${Array.from({length: 8}, (_, i) => `
+          <div class="energy-streak" style="
+            left: ${20 + i * 45}px;
+            animation-delay: ${i * 0.1}s;
+          "></div>
+        `).join('')}
+      </div>
+    </div>
+  `;
+  
+  // Agregar al DOM
+  document.body.appendChild(animationOverlay);
+  
+  // Reproducir sonido de ataque especial (opcional)
+  // const audio = new Audio('path/to/special-attack-sound.mp3');
+  // audio.play();
+  
+  // Remover la animación después de 3 segundos
+  setTimeout(() => {
+    if (animationOverlay.parentNode) {
+      animationOverlay.parentNode.removeChild(animationOverlay);
+    }
+  }, 3000);
+  
+  // Agregar mensaje especial al log
+  addBattleLog(`⚡ ¡IRON MAN ejecuta su ATAQUE ESPECIAL! ¡Rayo Repulsor activado!`);
+}
+
+// Función para mostrar animación especial de Spider-Man
+function showSpiderManSpecialAnimation(heroIndex) {
+  const animationOverlay = document.createElement('div');
+  animationOverlay.className = 'iron-man-special'; // Reutilizamos la clase
+  
+  animationOverlay.innerHTML = `
+    <div class="iron-man-animation" style="background: linear-gradient(135deg, #dc2626 0%, #ef4444 50%, #fca5a5 100%);">
+      <div class="iron-man-character" style="background: linear-gradient(45deg, #dc2626 0%, #ef4444 50%, #fca5a5 100%);">🕷️</div>
+      <div class="energy-beam" style="background: linear-gradient(90deg, #dc2626 0%, #ef4444 50%, #fca5a5 100%);"></div>
+      <div class="energy-ring" style="border-color: #dc2626;"></div>
+      <div class="energy-streaks">
+        ${Array.from({length: 6}, (_, i) => `
+          <div class="energy-streak" style="
+            left: ${30 + i * 60}px;
+            animation-delay: ${i * 0.15}s;
+            background: linear-gradient(180deg, #dc2626 0%, transparent 100%);
+          "></div>
+        `).join('')}
+      </div>
+    </div>
+  `;
+  
+  document.body.appendChild(animationOverlay);
+  
+  setTimeout(() => {
+    if (animationOverlay.parentNode) {
+      animationOverlay.parentNode.removeChild(animationOverlay);
+    }
+  }, 3000);
+  
+  addBattleLog(`🕷️ ¡SPIDER-MAN ejecuta su ATAQUE ESPECIAL! ¡Telaraña de Energía!`);
+}
+
+// Función para mostrar animación especial de Captain America
+function showCaptainAmericaSpecialAnimation(heroIndex) {
+  const animationOverlay = document.createElement('div');
+  animationOverlay.className = 'iron-man-special';
+  
+  animationOverlay.innerHTML = `
+    <div class="iron-man-animation" style="background: linear-gradient(135deg, #1e40af 0%, #3b82f6 50%, #60a5fa 100%);">
+      <div class="iron-man-character" style="background: linear-gradient(45deg, #1e40af 0%, #3b82f6 50%, #60a5fa 100%);">🛡️</div>
+      <div class="energy-beam" style="background: linear-gradient(90deg, #1e40af 0%, #3b82f6 50%, #60a5fa 100%);"></div>
+      <div class="energy-ring" style="border-color: #1e40af;"></div>
+      <div class="energy-streaks">
+        ${Array.from({length: 4}, (_, i) => `
+          <div class="energy-streak" style="
+            left: ${50 + i * 80}px;
+            animation-delay: ${i * 0.2}s;
+            background: linear-gradient(180deg, #1e40af 0%, transparent 100%);
+          "></div>
+        `).join('')}
+      </div>
+    </div>
+  `;
+  
+  document.body.appendChild(animationOverlay);
+  
+  setTimeout(() => {
+    if (animationOverlay.parentNode) {
+      animationOverlay.parentNode.removeChild(animationOverlay);
+    }
+  }, 3000);
+  
+  addBattleLog(`🛡️ ¡CAPTAIN AMERICA ejecuta su ATAQUE ESPECIAL! ¡Escudo de Energía!`);
 }
 
 // Ataque de villano
@@ -1309,6 +1428,18 @@ function villainAttack(villainIndex, attackType) {
     villain.power = Math.min(100, villain.power + powerGain);
   }
   
+  // Mostrar animación especial para villanos específicos
+  if (attackType === 'special') {
+    const villainName = villain.name.toLowerCase();
+    if (villainName.includes('thanos')) {
+      showThanosSpecialAnimation(villainIndex);
+    } else if (villainName.includes('loki')) {
+      showLokiSpecialAnimation(villainIndex);
+    } else if (villainName.includes('venom') || villainName.includes('eddie')) {
+      showVenomSpecialAnimation(villainIndex);
+    }
+  }
+  
   // Agregar animación de daño
   const targetHealthBar = document.getElementById(`hero-health-bar-${targetIndex}`);
   if (targetHealthBar) {
@@ -1353,9 +1484,108 @@ function villainAttack(villainIndex, attackType) {
       }
     }
     
-    updateBattleUI();
-    checkBattleEnd();
-  }
+      updateBattleUI();
+  checkBattleEnd();
+}
+
+// Función para mostrar animación especial de Thanos
+function showThanosSpecialAnimation(villainIndex) {
+  const animationOverlay = document.createElement('div');
+  animationOverlay.className = 'iron-man-special';
+  
+  animationOverlay.innerHTML = `
+    <div class="iron-man-animation" style="background: linear-gradient(135deg, #7c3aed 0%, #a855f7 50%, #c084fc 100%);">
+      <div class="iron-man-character" style="background: linear-gradient(45deg, #7c3aed 0%, #a855f7 50%, #c084fc 100%);">💎</div>
+      <div class="energy-beam" style="background: linear-gradient(90deg, #7c3aed 0%, #a855f7 50%, #c084fc 100%);"></div>
+      <div class="energy-ring" style="border-color: #7c3aed;"></div>
+      <div class="energy-streaks">
+        ${Array.from({length: 5}, (_, i) => `
+          <div class="energy-streak" style="
+            left: ${40 + i * 70}px;
+            animation-delay: ${i * 0.12}s;
+            background: linear-gradient(180deg, #7c3aed 0%, transparent 100%);
+          "></div>
+        `).join('')}
+      </div>
+    </div>
+  `;
+  
+  document.body.appendChild(animationOverlay);
+  
+  setTimeout(() => {
+    if (animationOverlay.parentNode) {
+      animationOverlay.parentNode.removeChild(animationOverlay);
+    }
+  }, 3000);
+  
+  addBattleLog(`💎 ¡THANOS ejecuta su ATAQUE ESPECIAL! ¡Poder de las Gemas del Infinito!`);
+}
+
+// Función para mostrar animación especial de Loki
+function showLokiSpecialAnimation(villainIndex) {
+  const animationOverlay = document.createElement('div');
+  animationOverlay.className = 'iron-man-special';
+  
+  animationOverlay.innerHTML = `
+    <div class="iron-man-animation" style="background: linear-gradient(135deg, #059669 0%, #10b981 50%, #34d399 100%);">
+      <div class="iron-man-character" style="background: linear-gradient(45deg, #059669 0%, #10b981 50%, #34d399 100%);">🪄</div>
+      <div class="energy-beam" style="background: linear-gradient(90deg, #059669 0%, #10b981 50%, #34d399 100%);"></div>
+      <div class="energy-ring" style="border-color: #059669;"></div>
+      <div class="energy-streaks">
+        ${Array.from({length: 7}, (_, i) => `
+          <div class="energy-streak" style="
+            left: ${25 + i * 55}px;
+            animation-delay: ${i * 0.1}s;
+            background: linear-gradient(180deg, #059669 0%, transparent 100%);
+          "></div>
+        `).join('')}
+      </div>
+    </div>
+  `;
+  
+  document.body.appendChild(animationOverlay);
+  
+  setTimeout(() => {
+    if (animationOverlay.parentNode) {
+      animationOverlay.parentNode.removeChild(animationOverlay);
+    }
+  }, 3000);
+  
+  addBattleLog(`🪄 ¡LOKI ejecuta su ATAQUE ESPECIAL! ¡Ilusiones Mágicas!`);
+}
+
+// Función para mostrar animación especial de Venom
+function showVenomSpecialAnimation(villainIndex) {
+  const animationOverlay = document.createElement('div');
+  animationOverlay.className = 'iron-man-special';
+  
+  animationOverlay.innerHTML = `
+    <div class="iron-man-animation" style="background: linear-gradient(135deg, #1f2937 0%, #374151 50%, #4b5563 100%);">
+      <div class="iron-man-character" style="background: linear-gradient(45deg, #1f2937 0%, #374151 50%, #4b5563 100%);">🕷️</div>
+      <div class="energy-beam" style="background: linear-gradient(90deg, #1f2937 0%, #374151 50%, #4b5563 100%);"></div>
+      <div class="energy-ring" style="border-color: #1f2937;"></div>
+      <div class="energy-streaks">
+        ${Array.from({length: 6}, (_, i) => `
+          <div class="energy-streak" style="
+            left: ${30 + i * 60}px;
+            animation-delay: ${i * 0.13}s;
+            background: linear-gradient(180deg, #1f2937 0%, transparent 100%);
+          "></div>
+        `).join('')}
+      </div>
+    </div>
+  `;
+  
+  document.body.appendChild(animationOverlay);
+  
+  setTimeout(() => {
+    if (animationOverlay.parentNode) {
+      animationOverlay.parentNode.removeChild(animationOverlay);
+    }
+  }, 3000);
+  
+  addBattleLog(`🕷️ ¡VENOM ejecuta su ATAQUE ESPECIAL! ¡Simbionte Devastador!`);
+}
 
 // Agregar entrada al log de batalla
 function addBattleLog(message) {

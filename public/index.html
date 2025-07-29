@@ -175,6 +175,123 @@
         box-shadow: 0 0 20px rgba(16, 185, 129, 0.8);
       }
     }
+    
+    /* Animación especial de Iron Man */
+    .iron-man-special {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100vw;
+      height: 100vh;
+      z-index: 9999;
+      background: rgba(0, 0, 0, 0.8);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      animation: fadeInOut 3s ease-in-out;
+    }
+    
+    .iron-man-animation {
+      width: 400px;
+      height: 300px;
+      background: linear-gradient(135deg, #1e3a8a 0%, #1e40af 50%, #3b82f6 100%);
+      border-radius: 20px;
+      position: relative;
+      overflow: hidden;
+      box-shadow: 0 0 50px rgba(59, 130, 246, 0.6);
+      animation: ironManGlow 3s ease-in-out;
+    }
+    
+    .iron-man-character {
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      width: 200px;
+      height: 200px;
+      background: linear-gradient(45deg, #dc2626 0%, #ef4444 50%, #fca5a5 100%);
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 80px;
+      color: #fbbf24;
+      animation: ironManPose 3s ease-in-out;
+    }
+    
+    .energy-beam {
+      position: absolute;
+      top: 50%;
+      right: -100px;
+      width: 200px;
+      height: 20px;
+      background: linear-gradient(90deg, #3b82f6 0%, #60a5fa 50%, #93c5fd 100%);
+      border-radius: 10px;
+      animation: energyBeam 2s ease-in-out 0.5s;
+    }
+    
+    .energy-ring {
+      position: absolute;
+      top: 50%;
+      right: 50px;
+      width: 60px;
+      height: 60px;
+      border: 4px solid #fbbf24;
+      border-radius: 50%;
+      animation: energyRing 2s ease-in-out 0.5s;
+    }
+    
+    .energy-streaks {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      pointer-events: none;
+    }
+    
+    .energy-streak {
+      position: absolute;
+      width: 2px;
+      height: 20px;
+      background: linear-gradient(180deg, #3b82f6 0%, transparent 100%);
+      animation: energyStreak 1s ease-in-out infinite;
+    }
+    
+    @keyframes fadeInOut {
+      0%, 100% { opacity: 0; }
+      20%, 80% { opacity: 1; }
+    }
+    
+    @keyframes ironManGlow {
+      0% { box-shadow: 0 0 20px rgba(59, 130, 246, 0.3); }
+      50% { box-shadow: 0 0 50px rgba(59, 130, 246, 0.8); }
+      100% { box-shadow: 0 0 20px rgba(59, 130, 246, 0.3); }
+    }
+    
+    @keyframes ironManPose {
+      0% { transform: translate(-50%, -50%) scale(0.8); }
+      50% { transform: translate(-50%, -50%) scale(1.1); }
+      100% { transform: translate(-50%, -50%) scale(0.8); }
+    }
+    
+    @keyframes energyBeam {
+      0% { transform: translateX(0) scaleX(0); }
+      50% { transform: translateX(100px) scaleX(1); }
+      100% { transform: translateX(200px) scaleX(0); }
+    }
+    
+    @keyframes energyRing {
+      0% { transform: scale(0) rotate(0deg); opacity: 0; }
+      50% { transform: scale(1.2) rotate(180deg); opacity: 1; }
+      100% { transform: scale(0) rotate(360deg); opacity: 0; }
+    }
+    
+    @keyframes energyStreak {
+      0% { transform: translateY(0) scaleY(0); opacity: 0; }
+      50% { transform: translateY(-20px) scaleY(1); opacity: 1; }
+      100% { transform: translateY(-40px) scaleY(0); opacity: 0; }
+    }
   </style>
 </head>
 <body class="h-full w-full flex flex-col items-center justify-center bg-gray-900">
