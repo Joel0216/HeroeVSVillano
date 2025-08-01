@@ -7,6 +7,249 @@ const baseUrl = isServerMode ? '' : 'http://localhost:3001';
 console.log(`🎵 Modo de operación: ${isServerMode ? 'Servidor' : 'Archivo local'}`);
 console.log(`🌐 URL base: ${baseUrl}`);
 
+// Configuración de almacenamiento
+const STORAGE_CONFIG = {
+  maxFileSize: 12 * 1024 * 1024, // 12MB
+  maxTotalSize: 24 * 1024 * 1024, // 24MB total (2 archivos de 12MB cada uno)
+  dbName: 'DataFightMusicDB',
+  dbVersion: 1,
+  storeName: 'musicFiles'
+};
+
+// Sistema de IndexedDB para archivos grandes
+class MusicStorageManager {
+  constructor() {
+    this.db = null;
+    this.isIndexedDBSupported = 'indexedDB' in window;
+  }
+
+  async initDB() {
+    if (!this.isIndexedDBSupported) {
+      console.warn('IndexedDB no soportado, usando localStorage');
+      return false;
+    }
+
+    return new Promise((resolve, reject) => {
+      const request = indexedDB.open(STORAGE_CONFIG.dbName, STORAGE_CONFIG.dbVersion);
+      
+      request.onerror = () => {
+        console.error('Error al abrir IndexedDB:', request.error);
+        reject(request.error);
+      };
+      
+      request.onsuccess = () => {
+        this.db = request.result;
+        console.log('✅ IndexedDB inicializado correctamente');
+        resolve(true);
+      };
+      
+      request.onupgradeneeded = (event) => {
+        const db = event.target.result;
+        if (!db.objectStoreNames.contains(STORAGE_CONFIG.storeName)) {
+          const store = db.createObjectStore(STORAGE_CONFIG.storeName, { keyPath: 'id' });
+          console.log('✅ ObjectStore creado:', STORAGE_CONFIG.storeName);
+        }
+      };
+    });
+  }
+
+  async saveMusicFile(fileType, file, dataUrl) {
+    try {
+      if (this.isIndexedDBSupported && await this.initDB()) {
+        // Usar IndexedDB para archivos grandes
+        return await this.saveToIndexedDB(fileType, file, dataUrl);
+      } else {
+        // Fallback a localStorage para archivos pequeños
+        return this.saveToLocalStorage(fileType, file, dataUrl);
+      }
+    } catch (error) {
+      console.error('Error al guardar archivo de música:', error);
+      throw error;
+    }
+  }
+
+  async saveToIndexedDB(fileType, file, dataUrl) {
+    return new Promise((resolve, reject) => {
+      const transaction = this.db.transaction([STORAGE_CONFIG.storeName], 'readwrite');
+      const store = transaction.objectStore(STORAGE_CONFIG.storeName);
+      
+      const musicData = {
+        id: fileType,
+        name: file.name,
+        size: file.size,
+        type: file.type,
+        dataUrl: dataUrl,
+        timestamp: new Date().toISOString()
+      };
+      
+      const request = store.put(musicData);
+      
+      request.onsuccess = () => {
+        console.log(`✅ ${fileType} guardado en IndexedDB`);
+        resolve(musicData);
+      };
+      
+      request.onerror = () => {
+        console.error('Error al guardar en IndexedDB:', request.error);
+        reject(request.error);
+      };
+    });
+  }
+
+  saveToLocalStorage(fileType, file, dataUrl) {
+    try {
+      localStorage.setItem(`${fileType}File`, dataUrl);
+      localStorage.setItem(`${fileType}Name`, file.name);
+      localStorage.setItem(`${fileType}Size`, file.size);
+      console.log(`✅ ${fileType} guardado en localStorage`);
+      return { name: file.name, size: file.size };
+    } catch (error) {
+      console.error('Error al guardar en localStorage:', error);
+      throw error;
+    }
+  }
+
+  async getMusicFile(fileType) {
+    try {
+      if (this.isIndexedDBSupported && await this.initDB()) {
+        return await this.getFromIndexedDB(fileType);
+      } else {
+        return this.getFromLocalStorage(fileType);
+      }
+    } catch (error) {
+      console.error('Error al obtener archivo de música:', error);
+      return null;
+    }
+  }
+
+  async getFromIndexedDB(fileType) {
+    return new Promise((resolve, reject) => {
+      const transaction = this.db.transaction([STORAGE_CONFIG.storeName], 'readonly');
+      const store = transaction.objectStore(STORAGE_CONFIG.storeName);
+      const request = store.get(fileType);
+      
+      request.onsuccess = () => {
+        if (request.result) {
+          console.log(`✅ ${fileType} cargado desde IndexedDB`);
+          resolve(request.result);
+        } else {
+          resolve(null);
+        }
+      };
+      
+      request.onerror = () => {
+        console.error('Error al obtener de IndexedDB:', request.error);
+        reject(request.error);
+      };
+    });
+  }
+
+  getFromLocalStorage(fileType) {
+    try {
+      const dataUrl = localStorage.getItem(`${fileType}File`);
+      const name = localStorage.getItem(`${fileType}Name`);
+      const size = localStorage.getItem(`${fileType}Size`);
+      
+      if (dataUrl && name && size) {
+        console.log(`✅ ${fileType} cargado desde localStorage`);
+        return { dataUrl, name, size: parseInt(size) };
+      }
+      return null;
+    } catch (error) {
+      console.error('Error al obtener de localStorage:', error);
+      return null;
+    }
+  }
+
+  async removeMusicFile(fileType) {
+    try {
+      if (this.isIndexedDBSupported && await this.initDB()) {
+        return await this.removeFromIndexedDB(fileType);
+      } else {
+        return this.removeFromLocalStorage(fileType);
+      }
+    } catch (error) {
+      console.error('Error al eliminar archivo de música:', error);
+      throw error;
+    }
+  }
+
+  async removeFromIndexedDB(fileType) {
+    return new Promise((resolve, reject) => {
+      const transaction = this.db.transaction([STORAGE_CONFIG.storeName], 'readwrite');
+      const store = transaction.objectStore(STORAGE_CONFIG.storeName);
+      const request = store.delete(fileType);
+      
+      request.onsuccess = () => {
+        console.log(`🗑️ ${fileType} eliminado de IndexedDB`);
+        resolve(true);
+      };
+      
+      request.onerror = () => {
+        console.error('Error al eliminar de IndexedDB:', request.error);
+        reject(request.error);
+      };
+    });
+  }
+
+  removeFromLocalStorage(fileType) {
+    try {
+      localStorage.removeItem(`${fileType}File`);
+      localStorage.removeItem(`${fileType}Name`);
+      localStorage.removeItem(`${fileType}Size`);
+      console.log(`🗑️ ${fileType} eliminado de localStorage`);
+      return true;
+    } catch (error) {
+      console.error('Error al eliminar de localStorage:', error);
+      throw error;
+    }
+  }
+
+  async getTotalStorageSize() {
+    try {
+      if (this.isIndexedDBSupported && await this.initDB()) {
+        return await this.getIndexedDBSize();
+      } else {
+        return this.getLocalStorageSize();
+      }
+    } catch (error) {
+      console.error('Error al obtener tamaño de almacenamiento:', error);
+      return 0;
+    }
+  }
+
+  async getIndexedDBSize() {
+    return new Promise((resolve, reject) => {
+      const transaction = this.db.transaction([STORAGE_CONFIG.storeName], 'readonly');
+      const store = transaction.objectStore(STORAGE_CONFIG.storeName);
+      const request = store.getAll();
+      
+      request.onsuccess = () => {
+        const totalSize = request.result.reduce((sum, item) => sum + (item.size || 0), 0);
+        resolve(totalSize);
+      };
+      
+      request.onerror = () => {
+        reject(request.error);
+      };
+    });
+  }
+
+  getLocalStorageSize() {
+    try {
+      const lobbySize = parseInt(localStorage.getItem('lobbyMusicSize') || '0');
+      const battleSize = parseInt(localStorage.getItem('battleMusicSize') || '0');
+      return lobbySize + battleSize;
+    } catch (error) {
+      console.error('Error al calcular tamaño de localStorage:', error);
+      return 0;
+    }
+  }
+}
+
+// Instancia global del gestor de almacenamiento
+const musicStorage = new MusicStorageManager();
+
 // Datos iniciales almacenados en localStorage
 const initializeData = () => {
   if (!localStorage.getItem('users')) {
@@ -220,9 +463,9 @@ async function handleLobbyMusicUpload(event) {
     return;
   }
 
-  // Validar tamaño (5MB máximo para evitar problemas de quota)
-  if (file.size > 5 * 1024 * 1024) {
-    showMessage('El archivo es demasiado grande. Máximo 5MB para evitar problemas de almacenamiento', 'error');
+  // Validar tamaño (12MB máximo)
+  if (file.size > STORAGE_CONFIG.maxFileSize) {
+    showMessage(`El archivo es demasiado grande. Máximo ${STORAGE_CONFIG.maxFileSize / (1024 * 1024)}MB`, 'error');
     return;
   }
 
@@ -251,23 +494,24 @@ async function handleLobbyMusicUpload(event) {
         return;
       }
     } else {
-      // Modo archivo local: usar readAsDataURL para evitar recursión
+      // Modo archivo local: usar nuevo sistema de almacenamiento
       const reader = new FileReader();
       
-      reader.onload = function(e) {
+      reader.onload = async function(e) {
         try {
-          // Usar readAsDataURL en lugar de readAsArrayBuffer para evitar recursión
           const dataUrl = e.target.result;
           
-          // Verificar si el tamaño del data URL es demasiado grande
-          if (dataUrl.length > 1000000) { // 1MB aproximado
-            showMessage('El archivo es demasiado grande para almacenamiento local. Usa un archivo más pequeño.', 'error');
+          // Verificar espacio total disponible
+          const currentSize = await musicStorage.getTotalStorageSize();
+          const newTotalSize = currentSize + file.size;
+          
+          if (newTotalSize > STORAGE_CONFIG.maxTotalSize) {
+            showMessage(`No hay suficiente espacio. Espacio usado: ${(currentSize / (1024 * 1024)).toFixed(2)}MB. Límite: ${STORAGE_CONFIG.maxTotalSize / (1024 * 1024)}MB`, 'error');
             return;
           }
           
-          localStorage.setItem('lobbyMusicFile', dataUrl);
-          localStorage.setItem('lobbyMusicName', file.name);
-          localStorage.setItem('lobbyMusicSize', file.size);
+          // Guardar usando el nuevo sistema
+          await musicStorage.saveMusicFile('lobby', file, dataUrl);
           
           // Usar directamente la data URL para reproducción
           lobbyMusicFile = dataUrl;
@@ -295,7 +539,6 @@ async function handleLobbyMusicUpload(event) {
         showMessage('Error al leer el archivo de música', 'error');
       };
       
-      // Usar readAsDataURL para evitar problemas de recursión
       reader.readAsDataURL(file);
     }
   } catch (error) {
@@ -318,9 +561,9 @@ async function handleBattleMusicUpload(event) {
     return;
   }
 
-  // Validar tamaño (5MB máximo para evitar problemas de quota)
-  if (file.size > 5 * 1024 * 1024) {
-    showMessage('El archivo es demasiado grande. Máximo 5MB para evitar problemas de almacenamiento', 'error');
+  // Validar tamaño (12MB máximo)
+  if (file.size > STORAGE_CONFIG.maxFileSize) {
+    showMessage(`El archivo es demasiado grande. Máximo ${STORAGE_CONFIG.maxFileSize / (1024 * 1024)}MB`, 'error');
     return;
   }
 
@@ -349,23 +592,24 @@ async function handleBattleMusicUpload(event) {
         return;
       }
     } else {
-      // Modo archivo local: usar readAsDataURL para evitar recursión
+      // Modo archivo local: usar nuevo sistema de almacenamiento
       const reader = new FileReader();
       
-      reader.onload = function(e) {
+      reader.onload = async function(e) {
         try {
-          // Usar readAsDataURL en lugar de readAsArrayBuffer para evitar recursión
           const dataUrl = e.target.result;
           
-          // Verificar si el tamaño del data URL es demasiado grande
-          if (dataUrl.length > 1000000) { // 1MB aproximado
-            showMessage('El archivo es demasiado grande para almacenamiento local. Usa un archivo más pequeño.', 'error');
+          // Verificar espacio total disponible
+          const currentSize = await musicStorage.getTotalStorageSize();
+          const newTotalSize = currentSize + file.size;
+          
+          if (newTotalSize > STORAGE_CONFIG.maxTotalSize) {
+            showMessage(`No hay suficiente espacio. Espacio usado: ${(currentSize / (1024 * 1024)).toFixed(2)}MB. Límite: ${STORAGE_CONFIG.maxTotalSize / (1024 * 1024)}MB`, 'error');
             return;
           }
           
-          localStorage.setItem('battleMusicFile', dataUrl);
-          localStorage.setItem('battleMusicName', file.name);
-          localStorage.setItem('battleMusicSize', file.size);
+          // Guardar usando el nuevo sistema
+          await musicStorage.saveMusicFile('battle', file, dataUrl);
           
           // Usar directamente la data URL para reproducción
           battleMusicFile = dataUrl;
@@ -386,7 +630,6 @@ async function handleBattleMusicUpload(event) {
         showMessage('Error al leer el archivo de música', 'error');
       };
       
-      // Usar readAsDataURL para evitar problemas de recursión
       reader.readAsDataURL(file);
     }
   } catch (error) {
@@ -412,33 +655,23 @@ async function loadMusicConfig() {
       
       updateMusicInterface(config);
     } else {
-      // Modo archivo local: cargar desde localStorage
-      const savedLobbyMusic = localStorage.getItem('lobbyMusicFile');
-      const savedBattleMusic = localStorage.getItem('battleMusicFile');
+      // Modo archivo local: cargar desde nuevo sistema de almacenamiento
+      const lobbyData = await musicStorage.getMusicFile('lobby');
+      const battleData = await musicStorage.getMusicFile('battle');
       
-      if (savedLobbyMusic) {
-        try {
-          // Usar directamente la data URL guardada
-          lobbyMusicFile = savedLobbyMusic;
-        } catch (error) {
-          console.error('Error al cargar música de lobby:', error);
-        }
+      if (lobbyData) {
+        lobbyMusicFile = lobbyData.dataUrl;
       }
       
-      if (savedBattleMusic) {
-        try {
-          // Usar directamente la data URL guardada
-          battleMusicFile = savedBattleMusic;
-        } catch (error) {
-          console.error('Error al cargar música de batalla:', error);
-        }
+      if (battleData) {
+        battleMusicFile = battleData.dataUrl;
       }
       
       const config = {
-        lobbyMusicName: localStorage.getItem('lobbyMusicName'),
-        battleMusicName: localStorage.getItem('battleMusicName'),
-        lobbyMusicSize: localStorage.getItem('lobbyMusicSize'),
-        battleMusicSize: localStorage.getItem('battleMusicSize')
+        lobbyMusicName: lobbyData?.name || null,
+        battleMusicName: battleData?.name || null,
+        lobbyMusicSize: lobbyData?.size || null,
+        battleMusicSize: battleData?.size || null
       };
       
       updateMusicInterface(config);
@@ -450,37 +683,38 @@ async function loadMusicConfig() {
   }
 }
 
-// Función para limpiar localStorage de música
-function clearMusicStorage() {
+// Función para limpiar localStorage de música (actualizada)
+async function clearMusicStorage() {
   try {
+    // Limpiar usando el nuevo sistema
+    await musicStorage.removeMusicFile('lobby');
+    await musicStorage.removeMusicFile('battle');
+    
+    // También limpiar localStorage por compatibilidad
     localStorage.removeItem('lobbyMusicFile');
     localStorage.removeItem('lobbyMusicName');
     localStorage.removeItem('lobbyMusicSize');
     localStorage.removeItem('battleMusicFile');
     localStorage.removeItem('battleMusicName');
     localStorage.removeItem('battleMusicSize');
-    console.log('🗑️ Almacenamiento de música limpiado');
+    
+    console.log('🗑️ Almacenamiento de música limpiado completamente');
+    showMessage('🗑️ Almacenamiento de música limpiado', 'success');
+    
+    // Actualizar interfaz
+    updateMusicInterface({ 
+      lobbyMusicName: null, 
+      lobbyMusicSize: null,
+      battleMusicName: null,
+      battleMusicSize: null
+    });
   } catch (error) {
     console.error('Error al limpiar almacenamiento de música:', error);
+    showMessage('Error al limpiar almacenamiento', 'error');
   }
 }
 
-// Función para verificar espacio disponible en localStorage
-function checkStorageQuota() {
-  try {
-    const testKey = 'storage_test';
-    const testValue = 'x'.repeat(1000); // 1KB de prueba
-    
-    localStorage.setItem(testKey, testValue);
-    localStorage.removeItem(testKey);
-    return true;
-  } catch (error) {
-    console.error('Quota de almacenamiento excedida:', error);
-    return false;
-  }
-}
-
-// Función para obtener información del modo de almacenamiento
+// Función para obtener información del modo de almacenamiento (actualizada)
 function getStorageInfo() {
   if (isServerMode) {
     return {
@@ -490,10 +724,12 @@ function getStorageInfo() {
       icon: '🌐'
     };
   } else {
+    const storageType = musicStorage.isIndexedDBSupported ? 'IndexedDB' : 'localStorage';
     return {
       mode: 'Local',
-      description: 'Los archivos se guardan en el navegador (máximo 5MB)',
-      maxSize: '5MB',
+      description: `Los archivos se guardan en ${storageType} (máximo 12MB por archivo)`,
+      maxSize: '12MB',
+      totalSize: '24MB',
       icon: '💾'
     };
   }
@@ -560,7 +796,8 @@ function updateMusicInterface(config) {
           <div>
             <div class="font-semibold">Modo: ${storageInfo.mode}</div>
             <div class="text-sm text-gray-600">${storageInfo.description}</div>
-            <div class="text-sm text-gray-600">Tamaño máximo: ${storageInfo.maxSize}</div>
+            <div class="text-sm text-gray-600">Tamaño máximo por archivo: ${storageInfo.maxSize}</div>
+            ${storageInfo.totalSize ? `<div class="text-sm text-gray-600">Tamaño total disponible: ${storageInfo.totalSize}</div>` : ''}
           </div>
         </div>
         ${!isServerMode ? `
@@ -642,10 +879,8 @@ async function removeLobbyMusic() {
         showMessage('Error al eliminar música de lobby', 'error');
       }
     } else {
-      // Modo archivo local
-      localStorage.removeItem('lobbyMusicFile');
-      localStorage.removeItem('lobbyMusicName');
-      localStorage.removeItem('lobbyMusicSize');
+      // Modo archivo local: usar nuevo sistema de almacenamiento
+      await musicStorage.removeMusicFile('lobby');
       
       lobbyMusicFile = null;
       
@@ -681,10 +916,8 @@ async function removeBattleMusic() {
         showMessage('Error al eliminar música de batalla', 'error');
       }
     } else {
-      // Modo archivo local
-      localStorage.removeItem('battleMusicFile');
-      localStorage.removeItem('battleMusicName');
-      localStorage.removeItem('battleMusicSize');
+      // Modo archivo local: usar nuevo sistema de almacenamiento
+      await musicStorage.removeMusicFile('battle');
       
       battleMusicFile = null;
       
