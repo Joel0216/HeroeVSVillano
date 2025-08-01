@@ -220,9 +220,9 @@ async function handleLobbyMusicUpload(event) {
     return;
   }
 
-  // Validar tamaño (10MB máximo)
-  if (file.size > 10 * 1024 * 1024) {
-    showMessage('El archivo es demasiado grande. Máximo 10MB', 'error');
+  // Validar tamaño (5MB máximo para evitar problemas de quota)
+  if (file.size > 5 * 1024 * 1024) {
+    showMessage('El archivo es demasiado grande. Máximo 5MB para evitar problemas de almacenamiento', 'error');
     return;
   }
 
@@ -258,6 +258,13 @@ async function handleLobbyMusicUpload(event) {
         try {
           // Usar readAsDataURL en lugar de readAsArrayBuffer para evitar recursión
           const dataUrl = e.target.result;
+          
+          // Verificar si el tamaño del data URL es demasiado grande
+          if (dataUrl.length > 1000000) { // 1MB aproximado
+            showMessage('El archivo es demasiado grande para almacenamiento local. Usa un archivo más pequeño.', 'error');
+            return;
+          }
+          
           localStorage.setItem('lobbyMusicFile', dataUrl);
           localStorage.setItem('lobbyMusicName', file.name);
           localStorage.setItem('lobbyMusicSize', file.size);
@@ -276,7 +283,11 @@ async function handleLobbyMusicUpload(event) {
           }
         } catch (error) {
           console.error('Error al procesar archivo:', error);
-          showMessage('Error al procesar el archivo de música', 'error');
+          if (error.name === 'QuotaExceededError') {
+            showMessage('El archivo es demasiado grande para el almacenamiento local. Usa un archivo más pequeño o activa el modo servidor.', 'error');
+          } else {
+            showMessage('Error al procesar el archivo de música', 'error');
+          }
         }
       };
       
@@ -307,9 +318,9 @@ async function handleBattleMusicUpload(event) {
     return;
   }
 
-  // Validar tamaño (10MB máximo)
-  if (file.size > 10 * 1024 * 1024) {
-    showMessage('El archivo es demasiado grande. Máximo 10MB', 'error');
+  // Validar tamaño (5MB máximo para evitar problemas de quota)
+  if (file.size > 5 * 1024 * 1024) {
+    showMessage('El archivo es demasiado grande. Máximo 5MB para evitar problemas de almacenamiento', 'error');
     return;
   }
 
@@ -345,6 +356,13 @@ async function handleBattleMusicUpload(event) {
         try {
           // Usar readAsDataURL en lugar de readAsArrayBuffer para evitar recursión
           const dataUrl = e.target.result;
+          
+          // Verificar si el tamaño del data URL es demasiado grande
+          if (dataUrl.length > 1000000) { // 1MB aproximado
+            showMessage('El archivo es demasiado grande para almacenamiento local. Usa un archivo más pequeño.', 'error');
+            return;
+          }
+          
           localStorage.setItem('battleMusicFile', dataUrl);
           localStorage.setItem('battleMusicName', file.name);
           localStorage.setItem('battleMusicSize', file.size);
@@ -356,7 +374,11 @@ async function handleBattleMusicUpload(event) {
           updateMusicInterface({ battleMusicName: file.name, battleMusicSize: file.size });
         } catch (error) {
           console.error('Error al procesar archivo:', error);
-          showMessage('Error al procesar el archivo de música', 'error');
+          if (error.name === 'QuotaExceededError') {
+            showMessage('El archivo es demasiado grande para el almacenamiento local. Usa un archivo más pequeño o activa el modo servidor.', 'error');
+          } else {
+            showMessage('Error al procesar el archivo de música', 'error');
+          }
         }
       };
       
@@ -428,7 +450,58 @@ async function loadMusicConfig() {
   }
 }
 
+// Función para limpiar localStorage de música
+function clearMusicStorage() {
+  try {
+    localStorage.removeItem('lobbyMusicFile');
+    localStorage.removeItem('lobbyMusicName');
+    localStorage.removeItem('lobbyMusicSize');
+    localStorage.removeItem('battleMusicFile');
+    localStorage.removeItem('battleMusicName');
+    localStorage.removeItem('battleMusicSize');
+    console.log('🗑️ Almacenamiento de música limpiado');
+  } catch (error) {
+    console.error('Error al limpiar almacenamiento de música:', error);
+  }
+}
+
+// Función para verificar espacio disponible en localStorage
+function checkStorageQuota() {
+  try {
+    const testKey = 'storage_test';
+    const testValue = 'x'.repeat(1000); // 1KB de prueba
+    
+    localStorage.setItem(testKey, testValue);
+    localStorage.removeItem(testKey);
+    return true;
+  } catch (error) {
+    console.error('Quota de almacenamiento excedida:', error);
+    return false;
+  }
+}
+
+// Función para obtener información del modo de almacenamiento
+function getStorageInfo() {
+  if (isServerMode) {
+    return {
+      mode: 'Servidor',
+      description: 'Los archivos se guardan en el servidor',
+      maxSize: '10MB',
+      icon: '🌐'
+    };
+  } else {
+    return {
+      mode: 'Local',
+      description: 'Los archivos se guardan en el navegador (máximo 5MB)',
+      maxSize: '5MB',
+      icon: '💾'
+    };
+  }
+}
+
 function updateMusicInterface(config) {
+  const storageInfo = getStorageInfo();
+  
   // Actualizar información de música de lobby
   const lobbyInfo = document.getElementById('lobby-music-info');
   const lobbyPreview = document.getElementById('lobby-music-preview');
@@ -440,7 +513,7 @@ function updateMusicInterface(config) {
       lobbyInfo.innerHTML = `✅ ${config.lobbyMusicName} (${size} MB)`;
       if (lobbyRemoveBtn) lobbyRemoveBtn.classList.remove('hidden');
     } else {
-      lobbyInfo.innerHTML = '⚠️ No hay música configurada';
+      lobbyInfo.innerHTML = `⚠️ No hay música configurada`;
       if (lobbyRemoveBtn) lobbyRemoveBtn.classList.add('hidden');
     }
   }
@@ -464,7 +537,7 @@ function updateMusicInterface(config) {
       battleInfo.innerHTML = `✅ ${config.battleMusicName} (${size} MB)`;
       if (battleRemoveBtn) battleRemoveBtn.classList.remove('hidden');
     } else {
-      battleInfo.innerHTML = '⚠️ No hay música configurada';
+      battleInfo.innerHTML = `⚠️ No hay música configurada`;
       if (battleRemoveBtn) battleRemoveBtn.classList.add('hidden');
     }
   }
@@ -474,6 +547,28 @@ function updateMusicInterface(config) {
       <audio controls class="w-full mt-2">
         <source src="${battleMusicFile}" type="audio/mpeg">
       </audio>
+    `;
+  }
+  
+  // Agregar información del modo de almacenamiento
+  const storageInfoElement = document.getElementById('storage-info');
+  if (storageInfoElement) {
+    storageInfoElement.innerHTML = `
+      <div class="bg-blue-50 p-3 rounded-lg mb-4">
+        <div class="flex items-center gap-2">
+          <span class="text-lg">${storageInfo.icon}</span>
+          <div>
+            <div class="font-semibold">Modo: ${storageInfo.mode}</div>
+            <div class="text-sm text-gray-600">${storageInfo.description}</div>
+            <div class="text-sm text-gray-600">Tamaño máximo: ${storageInfo.maxSize}</div>
+          </div>
+        </div>
+        ${!isServerMode ? `
+          <button onclick="clearMusicStorage()" class="mt-2 bg-red-600 text-white px-3 py-1 rounded text-sm hover:bg-red-700">
+            🗑️ Limpiar almacenamiento
+          </button>
+        ` : ''}
+      </div>
     `;
   }
 }
@@ -1367,6 +1462,9 @@ function renderAdminPanel() {
       <!-- Configuración de Música -->
       <div class="bg-white bg-opacity-90 p-6 rounded-lg w-full">
         <h3 class="text-xl font-bold mb-4">🎵 Configuración de Música</h3>
+        
+        <!-- Información del modo de almacenamiento -->
+        <div id="storage-info" class="mb-6"></div>
         
         <!-- Música de Lobby -->
         <div class="mb-6">
