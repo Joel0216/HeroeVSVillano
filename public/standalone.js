@@ -220,60 +220,45 @@ async function handleAuth(mode) {
   errorDiv.textContent = '';
   
   try {
-    const users = JSON.parse(localStorage.getItem('users') || '[]');
+    const endpoint = mode === 'register' ? '/api/auth/register' : '/api/auth/login';
     
-    if (mode === 'register') {
-      // Verificar si el usuario ya existe
-      const existingUser = users.find(u => u.username === username);
-      if (existingUser) {
-        errorDiv.textContent = 'El usuario ya existe';
-        return;
+    const response = await apiFetch(endpoint, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({ username, password })
+    });
+    
+    // Guardar token y datos del usuario
+    localStorage.setItem('token', response.token);
+    localStorage.setItem('currentUser', JSON.stringify({
+      username: username,
+      userId: response.userId,
+      role: response.role
+    }));
+    
+    showMessage(mode === 'register' ? 'Usuario registrado exitosamente' : 'Inicio de sesión exitoso', 'success');
+    
+    setTimeout(() => {
+      if (response.role === 'admin') {
+        showAdminPanel();
+      } else {
+        showCharacterSelection();
       }
-      
-      // Crear nuevo usuario
-      const newUser = {
-        id: `user_${Date.now()}`,
-        username,
-        password,
-        role: 'user',
-        userId: `USER_${Date.now()}`
-      };
-      
-      users.push(newUser);
-      localStorage.setItem('users', JSON.stringify(users));
-      localStorage.setItem('currentUser', JSON.stringify(newUser));
-      
-      showMessage('Usuario registrado exitosamente', 'success');
-      setTimeout(() => {
-        if (newUser.role === 'admin') {
-          showAdminPanel();
-        } else {
-          showCharacterSelection();
-        }
-      }, 1000);
-      
-    } else {
-      // Login
-      const user = users.find(u => u.username === username && u.password === password);
-      if (!user) {
-        errorDiv.textContent = 'Usuario o contraseña incorrectos';
-        return;
-      }
-      
-      localStorage.setItem('currentUser', JSON.stringify(user));
-      showMessage('Inicio de sesión exitoso', 'success');
-      
-      setTimeout(() => {
-        if (user.role === 'admin') {
-          showAdminPanel();
-        } else {
-          showCharacterSelection();
-        }
-      }, 1000);
-    }
+    }, 1000);
+    
   } catch (error) {
     console.error('Error en autenticación:', error);
-    errorDiv.textContent = 'Error en el servidor';
+    
+    // Mostrar mensaje de error específico
+    if (error.message.includes('401')) {
+      errorDiv.textContent = 'Usuario o contraseña incorrectos';
+    } else if (error.message.includes('400')) {
+      errorDiv.textContent = 'El usuario ya existe';
+    } else {
+      errorDiv.textContent = 'Error en el servidor';
+    }
   }
 }
 
@@ -820,10 +805,21 @@ function toggleLobbyMusic() {
 
 async function removeLobbyMusic() {
   try {
+    // Verificar autenticación antes de eliminar
+    if (!isAuthenticated()) {
+      throw new Error('No estás autenticado. Por favor, inicia sesión.');
+    }
+    
+    if (!isAdmin()) {
+      throw new Error('Solo los administradores pueden eliminar música.');
+    }
+    
+    const token = getAuthToken();
+    
     const result = await apiFetch('/api/music/lobby', {
       method: 'DELETE',
       headers: {
-        'Authorization': `Bearer ${localStorage.getItem('token')}`
+        'Authorization': `Bearer ${token}`
       }
     });
 
@@ -848,16 +844,27 @@ async function removeLobbyMusic() {
     }
   } catch (error) {
     console.error('Error al eliminar música de lobby:', error);
-    showMessage('Error al eliminar música de lobby', 'error');
+    showMessage(error.message, 'error');
   }
 }
 
 async function removeBattleMusic() {
   try {
+    // Verificar autenticación antes de eliminar
+    if (!isAuthenticated()) {
+      throw new Error('No estás autenticado. Por favor, inicia sesión.');
+    }
+    
+    if (!isAdmin()) {
+      throw new Error('Solo los administradores pueden eliminar música.');
+    }
+    
+    const token = getAuthToken();
+    
     const result = await apiFetch('/api/music/battle', {
       method: 'DELETE',
       headers: {
-        'Authorization': `Bearer ${localStorage.getItem('token')}`
+        'Authorization': `Bearer ${token}`
       }
     });
 
@@ -882,7 +889,7 @@ async function removeBattleMusic() {
     }
   } catch (error) {
     console.error('Error al eliminar música de batalla:', error);
-    showMessage('Error al eliminar música de batalla', 'error');
+    showMessage(error.message, 'error');
   }
 }
 
@@ -2071,6 +2078,7 @@ function resetBattle() {
 // Función global para cerrar sesión
 function logout() {
   localStorage.removeItem('currentUser');
+  localStorage.removeItem('token'); // Limpiar token JWT
   localStorage.removeItem('selectedHeroes');
   localStorage.removeItem('selectedVillains');
   stopMusic();
@@ -2158,7 +2166,8 @@ async function apiFetch(endpoint, options = {}) {
     });
     
     if (!response.ok) {
-      throw new Error(`HTTP error! status: ${response.status}`);
+      const errorData = await response.json().catch(() => ({}));
+      throw new Error(`HTTP error! status: ${response.status} - ${errorData.error || 'Error desconocido'}`);
     }
     
     return await response.json();
@@ -2169,6 +2178,15 @@ async function apiFetch(endpoint, options = {}) {
     if (error.message.includes('CORS') || error.message.includes('Failed to fetch')) {
       showMessage('Error: Debes acceder desde http://localhost:3001, no desde file://', 'error');
       console.error('💡 Solución: Ejecuta "node app.js" y accede desde http://localhost:3001');
+    }
+    
+    // Si es error 401, redirigir al login
+    if (error.message.includes('401')) {
+      showMessage('Sesión expirada. Por favor, inicia sesión nuevamente.', 'error');
+      setTimeout(() => {
+        logout();
+        showScreen(landing);
+      }, 2000);
     }
     
     throw error;
@@ -2184,16 +2202,28 @@ async function uploadFile(endpoint, file, fieldName) {
   formData.append(fieldName, file);
   
   try {
+    // Verificar autenticación antes de subir
+    if (!isAuthenticated()) {
+      throw new Error('No estás autenticado. Por favor, inicia sesión.');
+    }
+    
+    if (!isAdmin()) {
+      throw new Error('Solo los administradores pueden subir música.');
+    }
+    
+    const token = getAuthToken();
+    
     const response = await fetch(url, {
       method: 'POST',
       headers: {
-        'Authorization': `Bearer ${localStorage.getItem('token')}`
+        'Authorization': `Bearer ${token}`
       },
       body: formData
     });
     
     if (!response.ok) {
-      throw new Error(`HTTP error! status: ${response.status}`);
+      const errorData = await response.json().catch(() => ({}));
+      throw new Error(`HTTP error! status: ${response.status} - ${errorData.error || 'Error desconocido'}`);
     }
     
     return await response.json();
@@ -2203,11 +2233,21 @@ async function uploadFile(endpoint, file, fieldName) {
     if (error.message.includes('CORS') || error.message.includes('Failed to fetch')) {
       showMessage('Error: Debes acceder desde http://localhost:3001, no desde file://', 'error');
       console.error('💡 Solución: Ejecuta "node app.js" y accede desde http://localhost:3001');
+    } else if (error.message.includes('401')) {
+      showMessage('Sesión expirada. Por favor, inicia sesión nuevamente.', 'error');
+      setTimeout(() => {
+        logout();
+        showScreen(landing);
+      }, 2000);
+    } else if (error.message.includes('403')) {
+      showMessage('Solo los administradores pueden subir música.', 'error');
+    } else {
+      showMessage(error.message, 'error');
     }
     
     throw error;
   }
-} 
+}
 
 // Detectar si el usuario está accediendo desde file://
 function checkFileProtocol() {
@@ -2245,3 +2285,25 @@ function checkFileProtocol() {
 document.addEventListener('DOMContentLoaded', function() {
   checkFileProtocol();
 }); 
+
+// Función para verificar si el usuario está autenticado
+function isAuthenticated() {
+  const token = localStorage.getItem('token');
+  const currentUser = JSON.parse(localStorage.getItem('currentUser') || '{}');
+  return token && currentUser.userId;
+}
+
+// Función para verificar si el usuario es admin
+function isAdmin() {
+  const currentUser = JSON.parse(localStorage.getItem('currentUser') || '{}');
+  return currentUser.role === 'admin';
+}
+
+// Función para obtener el token de autenticación
+function getAuthToken() {
+  const token = localStorage.getItem('token');
+  if (!token) {
+    throw new Error('No hay token de autenticación');
+  }
+  return token;
+}
