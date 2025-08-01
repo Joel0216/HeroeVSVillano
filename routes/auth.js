@@ -3,25 +3,12 @@ import express from 'express';
 import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
 import User from '../models/User.js';
-import { isDBConnected } from '../db.js';
 
 const router = express.Router();
 const SECRET_KEY = 'tu_clave_secreta';
 
-// Middleware para verificar conexión a base de datos
-const checkDBConnection = (req, res, next) => {
-  if (!isDBConnected()) {
-    console.error('❌ Base de datos no conectada');
-    return res.status(503).json({ 
-      error: 'Servicio de base de datos no disponible',
-      message: 'Por favor, intenta más tarde'
-    });
-  }
-  next();
-};
-
 // Registro
-router.post('/register', checkDBConnection, async (req, res) => {
+router.post('/register', async (req, res) => {
   try {
     const { username, password } = req.body;
     console.log('📋 Registro solicitado:', { username });
@@ -91,42 +78,25 @@ router.post('/register', checkDBConnection, async (req, res) => {
 });
 
 // Login
-router.post('/login', checkDBConnection, async (req, res) => {
+router.post('/login', async (req, res) => {
   try {
-    console.log('🔐 Intento de login:', { body: req.body });
-    
     const { username, password } = req.body;
-    
-    // Validar campos requeridos
     if (!username || !password) {
-      console.log('❌ Campos faltantes:', { username: !!username, password: !!password });
-      return res.status(400).json({ error: 'Faltan campos requeridos: username y password' });
+      return res.status(400).json({ error: 'Faltan campos requeridos' });
     }
     
     // Normalizar el username igual que en registro
     const normalizedUsername = username.trim().toLowerCase();
-    console.log('📋 Username normalizado:', normalizedUsername);
     
-    // Buscar usuario en la base de datos
     const user = await User.findOne({ username: normalizedUsername });
-    
-    if (!user) {
-      console.log('❌ Usuario no encontrado:', normalizedUsername);
-      return res.status(401).json({ error: 'Usuario no encontrado' });
+    if (!user || !(await bcrypt.compare(password, user.password))) {
+      return res.status(401).json({ error: 'Credenciales inválidas' });
     }
     
-    // Verificar contraseña
-    const isPasswordValid = await bcrypt.compare(password, user.password);
-    if (!isPasswordValid) {
-      console.log('❌ Contraseña incorrecta para usuario:', normalizedUsername);
-      return res.status(401).json({ error: 'Contraseña incorrecta' });
-    }
-    
-    console.log('✅ Login exitoso para usuario:', user.username);
+    console.log('🔐 Login exitoso para usuario:', user.username);
     console.log('👑 Role del usuario:', user.role);
     console.log('🆔 UserID:', user.userId);
     
-    // Generar token JWT
     const token = jwt.sign({ 
       id: user._id, 
       userId: user.userId,
@@ -136,31 +106,13 @@ router.post('/login', checkDBConnection, async (req, res) => {
     console.log('🔑 Token generado:', token.substring(0, 50) + '...');
     console.log('📋 Payload del token:', { id: user._id, userId: user.userId, role: user.role });
     
-    // Responder con éxito
-    res.status(200).json({ 
-      message: 'Login exitoso',
+    res.json({ 
       token, 
       userId: user.userId,
-      role: user.role,
-      username: user.username
+      role: user.role 
     });
-    
   } catch (error) {
-    console.error('❌ Error en login:', error);
-    
-    // Manejar errores específicos de MongoDB
-    if (error.name === 'MongoError' || error.name === 'MongoServerError') {
-      console.error('🔴 Error de base de datos:', error.message);
-      return res.status(500).json({ error: 'Error de conexión a la base de datos' });
-    }
-    
-    // Manejar errores de bcrypt
-    if (error.name === 'TypeError' && error.message.includes('bcrypt')) {
-      console.error('🔴 Error de bcrypt:', error.message);
-      return res.status(500).json({ error: 'Error al verificar contraseña' });
-    }
-    
-    // Error genérico
+    console.error('Error en login:', error);
     res.status(500).json({ error: 'Error interno del servidor' });
   }
 });

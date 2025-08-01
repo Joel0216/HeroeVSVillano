@@ -1,26 +1,12 @@
+// Servidor local simple para DataFight
 import express from 'express';
 import cors from 'cors';
 import path from 'path';
-import swaggerUi from 'swagger-ui-express';
 import fs from 'fs';
 import multer from 'multer';
 
-// Importar controladores
-import { getHeroes, createHero, updateHero, deleteHero } from './controllers/heroController.js';
-import { getVillains, createVillain, updateVillain, deleteVillain } from './controllers/villainController.js';
-
-// Importar middleware
-import { authMiddleware, requireAdmin } from './middleware/auth.js';
-
-// Importar rutas
-import authRoutes from './routes/auth.js';
-import battleController from './controllers/battleController.js';
-
-// Leer swagger.json
-const swaggerDocument = JSON.parse(fs.readFileSync('./swagger.json', 'utf-8'));
-
 const app = express();
-const PORT = process.env.PORT || 3001;
+const PORT = 3001;
 
 // Configurar multer para subida de archivos
 const storage = multer.diskStorage({
@@ -83,23 +69,8 @@ app.use(cors());
 app.use(express.json());
 app.use(express.static(path.join(process.cwd(), 'public')));
 
-// Rutas de autenticación
-app.use('/api/auth', authRoutes);
-
-// Rutas de héroes
-app.get('/api/heroes', authMiddleware, getHeroes);
-app.post('/api/heroes', authMiddleware, requireAdmin, createHero);
-app.put('/api/heroes/:heroId', authMiddleware, requireAdmin, updateHero);
-app.delete('/api/heroes/:heroId', authMiddleware, requireAdmin, deleteHero);
-
-// Rutas de villanos
-app.get('/api/villains', authMiddleware, getVillains);
-app.post('/api/villains', authMiddleware, requireAdmin, createVillain);
-app.put('/api/villains/:villainId', authMiddleware, requireAdmin, updateVillain);
-app.delete('/api/villains/:villainId', authMiddleware, requireAdmin, deleteVillain);
-
 // Rutas de música
-app.post('/api/music/lobby', authMiddleware, requireAdmin, upload.single('lobbyMusic'), (req, res) => {
+app.post('/api/music/lobby', upload.single('lobbyMusic'), (req, res) => {
   try {
     if (!req.file) {
       return res.status(400).json({ error: 'No se proporcionó archivo de música' });
@@ -114,7 +85,7 @@ app.post('/api/music/lobby', authMiddleware, requireAdmin, upload.single('lobbyM
       lobbyMusicName: req.file.originalname,
       lobbyMusicSize: req.file.size,
       updatedAt: new Date().toISOString(),
-      updatedBy: req.user.userId
+      updatedBy: 'local-server'
     };
     
     // Crear directorio si no existe
@@ -137,7 +108,7 @@ app.post('/api/music/lobby', authMiddleware, requireAdmin, upload.single('lobbyM
   }
 });
 
-app.post('/api/music/battle', authMiddleware, requireAdmin, upload.single('battleMusic'), (req, res) => {
+app.post('/api/music/battle', upload.single('battleMusic'), (req, res) => {
   try {
     if (!req.file) {
       return res.status(400).json({ error: 'No se proporcionó archivo de música' });
@@ -157,7 +128,7 @@ app.post('/api/music/battle', authMiddleware, requireAdmin, upload.single('battl
     musicConfig.battleMusicName = req.file.originalname;
     musicConfig.battleMusicSize = req.file.size;
     musicConfig.updatedAt = new Date().toISOString();
-    musicConfig.updatedBy = req.user.userId;
+    musicConfig.updatedBy = 'local-server';
     
     // Crear directorio si no existe
     const dataDir = path.join(process.cwd(), 'data');
@@ -200,7 +171,7 @@ app.get('/api/music/config', (req, res) => {
   }
 });
 
-app.delete('/api/music/lobby', authMiddleware, requireAdmin, (req, res) => {
+app.delete('/api/music/lobby', (req, res) => {
   try {
     const musicConfigPath = path.join(process.cwd(), 'data', 'music-config.json');
     
@@ -220,7 +191,7 @@ app.delete('/api/music/lobby', authMiddleware, requireAdmin, (req, res) => {
       delete musicConfig.lobbyMusicName;
       delete musicConfig.lobbyMusicSize;
       musicConfig.updatedAt = new Date().toISOString();
-      musicConfig.updatedBy = req.user.userId;
+      musicConfig.updatedBy = 'local-server';
       
       fs.writeFileSync(musicConfigPath, JSON.stringify(musicConfig, null, 2));
     }
@@ -232,7 +203,7 @@ app.delete('/api/music/lobby', authMiddleware, requireAdmin, (req, res) => {
   }
 });
 
-app.delete('/api/music/battle', authMiddleware, requireAdmin, (req, res) => {
+app.delete('/api/music/battle', (req, res) => {
   try {
     const musicConfigPath = path.join(process.cwd(), 'data', 'music-config.json');
     
@@ -252,7 +223,7 @@ app.delete('/api/music/battle', authMiddleware, requireAdmin, (req, res) => {
       delete musicConfig.battleMusicName;
       delete musicConfig.battleMusicSize;
       musicConfig.updatedAt = new Date().toISOString();
-      musicConfig.updatedBy = req.user.userId;
+      musicConfig.updatedBy = 'local-server';
       
       fs.writeFileSync(musicConfigPath, JSON.stringify(musicConfig, null, 2));
     }
@@ -264,24 +235,15 @@ app.delete('/api/music/battle', authMiddleware, requireAdmin, (req, res) => {
   }
 });
 
-// Rutas de batallas
-app.use('/api', battleController);
-
-// Ruta de prueba
-app.post('/api/test', (req, res) => {
-  res.json({ message: 'Funciona' });
-});
-
 // Servir el index.html en la ruta raíz
 app.get('/', (req, res) => {
   res.sendFile(path.join(process.cwd(), 'public', 'index.html'));
 });
 
-// Documentación interactiva Swagger
-app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerDocument));
-
 // Iniciar servidor
 app.listen(PORT, () => {
-  console.log(`Servidor corriendo en el puerto ${PORT}`);
-  console.log(`Documentación Swagger disponible en http://localhost:${PORT}/api-docs`);
-});
+  console.log(`🎵 Servidor local corriendo en http://localhost:${PORT}`);
+  console.log(`📁 Archivos estáticos servidos desde: ${path.join(process.cwd(), 'public')}`);
+  console.log(`🎯 Para usar el modo archivo local, abre: file://${path.join(process.cwd(), 'public', 'index.html')}`);
+  console.log(`🌐 Para usar el modo servidor, abre: http://localhost:${PORT}`);
+}); 
