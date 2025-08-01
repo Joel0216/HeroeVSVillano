@@ -1,0 +1,100 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Test Auth - DataFight</title>
+  <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
+</head>
+<body class="h-screen bg-gray-900 flex items-center justify-center">
+  <div class="bg-white p-8 rounded-lg shadow-lg max-w-md w-full">
+    <h1 class="text-2xl font-bold text-center mb-6">Test de Autenticación</h1>
+    
+    <div class="space-y-4">
+      <button id="test-register" class="w-full bg-blue-600 text-white py-2 rounded hover:bg-blue-700">
+        Test Registrar
+      </button>
+      
+      <button id="test-login" class="w-full bg-green-600 text-white py-2 rounded hover:bg-green-700">
+        Test Login
+      </button>
+      
+      <button id="test-logout" class="w-full bg-red-600 text-white py-2 rounded hover:bg-red-700">
+        Test Logout
+      </button>
+      
+      <button id="check-users" class="w-full bg-purple-600 text-white py-2 rounded hover:bg-purple-700">
+        Ver Usuarios
+      </button>
+    </div>
+    
+    <div id="result" class="mt-6 p-4 bg-gray-100 rounded text-sm"></div>
+  </div>
+
+  <script>
+    // Test de autenticación
+    document.getElementById('test-register').addEventListener('click', () => {
+      const users = JSON.parse(localStorage.getItem('users') || '[]');
+      const newUser = {
+        id: `user_${Date.now()}`,
+        username: 'testuser',
+        password: 'testpass',
+        role: 'user',
+        userId: `USER_${Date.now()}`
+      };
+      
+      users.push(newUser);
+      localStorage.setItem('users', JSON.stringify(users));
+      localStorage.setItem('currentUser', JSON.stringify(newUser));
+      
+      document.getElementById('result').innerHTML = `
+        <div class="text-green-600">✅ Usuario registrado: ${newUser.username}</div>
+        <div class="text-gray-600">Role: ${newUser.role}</div>
+        <div class="text-gray-600">ID: ${newUser.userId}</div>
+      `;
+    });
+    
+    document.getElementById('test-login').addEventListener('click', () => {
+      const users = JSON.parse(localStorage.getItem('users') || '[]');
+      const user = users.find(u => u.username === 'testuser' && u.password === 'testpass');
+      
+      if (user) {
+        localStorage.setItem('currentUser', JSON.stringify(user));
+        document.getElementById('result').innerHTML = `
+          <div class="text-green-600">✅ Login exitoso: ${user.username}</div>
+          <div class="text-gray-600">Role: ${user.role}</div>
+        `;
+      } else {
+        document.getElementById('result').innerHTML = `
+          <div class="text-red-600">❌ Login fallido - Usuario no encontrado</div>
+        `;
+      }
+    });
+    
+    document.getElementById('test-logout').addEventListener('click', () => {
+      localStorage.removeItem('currentUser');
+      document.getElementById('result').innerHTML = `
+        <div class="text-blue-600">🔓 Logout exitoso</div>
+      `;
+    });
+    
+    document.getElementById('check-users').addEventListener('click', () => {
+      const users = JSON.parse(localStorage.getItem('users') || '[]');
+      const currentUser = JSON.parse(localStorage.getItem('currentUser') || 'null');
+      
+      let html = '<div class="text-gray-600">📋 Usuarios registrados:</div>';
+      users.forEach(user => {
+        html += `<div class="text-sm">- ${user.username} (${user.role})</div>`;
+      });
+      
+      if (currentUser) {
+        html += `<div class="text-green-600 mt-2">👤 Usuario actual: ${currentUser.username}</div>`;
+      } else {
+        html += `<div class="text-gray-600 mt-2">👤 No hay usuario activo</div>`;
+      }
+      
+      document.getElementById('result').innerHTML = html;
+    });
+  </script>
+</body>
+</html> 

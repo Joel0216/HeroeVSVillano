@@ -619,6 +619,175 @@ async function initializeMusic() {
   }
 }
 
+// Función para cargar música guardada
+async function loadSavedMusic() {
+  try {
+    // Cargar configuración del servidor
+    await loadMusicConfig();
+    
+    // Cargar rutas guardadas en localStorage como fallback
+    const savedLobbyPath = localStorage.getItem('lobbyMusicPath');
+    const savedBattlePath = localStorage.getItem('battleMusicPath');
+    
+    if (savedLobbyPath && !lobbyMusicFile) {
+      lobbyMusicFile = savedLobbyPath;
+    }
+    
+    if (savedBattlePath && !battleMusicFile) {
+      battleMusicFile = savedBattlePath;
+    }
+    
+    console.log('🎵 Música cargada desde servidor y localStorage');
+  } catch (error) {
+    console.error('Error al cargar música:', error);
+  }
+}
+
+// Pantallas
+const landing = document.getElementById('landing');
+const auth = document.getElementById('auth');
+const adminPanel = document.getElementById('admin-panel');
+const characterSelection = document.getElementById('character-selection');
+const teamsConfirmed = document.getElementById('teams-confirmed');
+const battleScreen = document.getElementById('battle-screen');
+
+// Eventos de los botones principales
+const btnRegister = document.getElementById('btn-register');
+const btnLogin = document.getElementById('btn-login');
+
+if (btnRegister) {
+  btnRegister.addEventListener('click', () => {
+    showScreen(auth);
+    renderAuthForm('register');
+  });
+}
+
+if (btnLogin) {
+  btnLogin.addEventListener('click', () => {
+    showScreen(auth);
+    renderAuthForm('login');
+  });
+}
+
+// Renderizar formulario de autenticación
+function renderAuthForm(mode) {
+  if (!auth) return;
+  
+  auth.innerHTML = `
+    <div class="flex flex-col items-center justify-center space-y-4 bg-white bg-opacity-90 p-8 rounded-lg shadow-lg">
+      <h2 class="text-2xl font-bold text-gray-800 mb-2">${mode === 'register' ? 'Registrar Usuario' : 'Iniciar Sesión'}</h2>
+      <form id="auth-form" class="flex flex-col gap-4 w-64">
+        <input type="text" id="username" name="username" placeholder="Usuario" required class="px-4 py-2 rounded border border-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-500">
+        <input type="password" id="password" name="password" placeholder="Contraseña" required class="px-4 py-2 rounded border border-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-500">
+        <button type="submit" class="bg-blue-600 text-white py-2 rounded font-bold hover:bg-blue-700 transition">${mode === 'register' ? 'Registrar' : 'Entrar'}</button>
+        <button type="button" id="back-to-landing" class="text-blue-600 hover:underline mt-2">Volver</button>
+      </form>
+      <div id="auth-error" class="text-red-600 font-semibold"></div>
+    </div>
+  `;
+  
+  const backBtn = document.getElementById('back-to-landing');
+  const authForm = document.getElementById('auth-form');
+  
+  if (backBtn) {
+    backBtn.onclick = () => showScreen(landing);
+  }
+  
+  if (authForm) {
+    authForm.onsubmit = (e) => {
+      e.preventDefault();
+      handleAuth(mode);
+    };
+  }
+}
+
+// Manejar autenticación
+async function handleAuth(mode) {
+  const username = document.getElementById('username')?.value;
+  const password = document.getElementById('password')?.value;
+  const errorDiv = document.getElementById('auth-error');
+  
+  if (!username || !password) {
+    if (errorDiv) errorDiv.textContent = 'Usuario y contraseña son requeridos';
+    return;
+  }
+  
+  if (errorDiv) errorDiv.textContent = '';
+  
+  try {
+    const users = JSON.parse(localStorage.getItem('users') || '[]');
+    
+    if (mode === 'register') {
+      // Verificar si el usuario ya existe
+      const existingUser = users.find(u => u.username === username);
+      if (existingUser) {
+        if (errorDiv) errorDiv.textContent = 'El usuario ya existe';
+        return;
+      }
+      
+      // Crear nuevo usuario
+      const newUser = {
+        id: `user_${Date.now()}`,
+        username,
+        password,
+        role: 'user',
+        userId: `USER_${Date.now()}`
+      };
+      
+      users.push(newUser);
+      localStorage.setItem('users', JSON.stringify(users));
+      localStorage.setItem('currentUser', JSON.stringify(newUser));
+      
+      showMessage('Usuario registrado exitosamente', 'success');
+      setTimeout(() => {
+        if (newUser.role === 'admin') {
+          showAdminPanel();
+        } else {
+          showCharacterSelection();
+        }
+      }, 1000);
+      
+    } else {
+      // Login
+      const user = users.find(u => u.username === username && u.password === password);
+      if (!user) {
+        if (errorDiv) errorDiv.textContent = 'Usuario o contraseña incorrectos';
+        return;
+      }
+      
+      localStorage.setItem('currentUser', JSON.stringify(user));
+      showMessage('Inicio de sesión exitoso', 'success');
+      
+      setTimeout(() => {
+        if (user.role === 'admin') {
+          showAdminPanel();
+        } else {
+          showCharacterSelection();
+        }
+      }, 1000);
+    }
+  } catch (error) {
+    console.error('Error en autenticación:', error);
+    if (errorDiv) errorDiv.textContent = 'Error en el servidor';
+  }
+}
+
+// Función global para cerrar sesión
+function logout() {
+  localStorage.removeItem('currentUser');
+  localStorage.removeItem('selectedHeroes');
+  localStorage.removeItem('selectedVillains');
+  stopMusic();
+  
+  // Limpiar variables de música
+  currentAudio = null;
+  currentMusicType = null;
+  musicInitialized = false;
+  
+  showMessage('Sesión cerrada', 'info');
+  showScreen(landing);
+}
+
 // Inicializar la aplicación
 console.log('🎮 Aplicación standalone iniciada');
 showMessage('¡Bienvenido a DataFight!', 'info');
