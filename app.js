@@ -5,6 +5,9 @@ import swaggerUi from 'swagger-ui-express';
 import fs from 'fs';
 import multer from 'multer';
 
+// Importar conexión a base de datos
+import { connectDB } from './db.js';
+
 // Importar controladores
 import { getHeroes, createHero, updateHero, deleteHero } from './controllers/heroController.js';
 import { getVillains, createVillain, updateVillain, deleteVillain } from './controllers/villainController.js';
@@ -21,6 +24,9 @@ const swaggerDocument = JSON.parse(fs.readFileSync('./swagger.json', 'utf-8'));
 
 const app = express();
 const PORT = process.env.PORT || 3001;
+
+// Conectar a la base de datos
+connectDB();
 
 // Configurar multer para subida de archivos
 const storage = multer.diskStorage({
