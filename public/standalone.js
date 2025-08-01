@@ -168,11 +168,11 @@ function showScreen(screen) {
   }
   
   // Reproducir música de lobby automáticamente en pantallas de lobby
-  if (screen === landing || screen === adminPanel || screen === characterSelection) {
+  if (screen === landing || screen === characterSelection || screen === adminPanel) {
     if (currentMusicType !== 'lobby' && lobbyMusicFile) {
       setTimeout(() => {
         playLobbyMusic();
-      }, 500);
+      }, 300);
     }
   }
 }
@@ -281,12 +281,15 @@ function showAdminPanel() {
   showScreen(adminPanel);
   renderAdminPanel();
   
-  // Reproducir música de lobby automáticamente
-  setTimeout(() => {
-    if (lobbyMusicFile) {
+  // Cargar configuración de música
+  loadMusicConfig();
+  
+  // Asegurar que la música de lobby esté reproduciéndose
+  if (currentMusicType !== 'lobby' && lobbyMusicFile) {
+    setTimeout(() => {
       playLobbyMusic();
-    }
-  }, 500);
+    }, 300);
+  }
 }
 
 function renderAdminPanel() {
@@ -463,6 +466,16 @@ async function handleAddHero(e) {
     }
   }
 
+  // Validar URL de animación especial si se proporciona
+  if (heroData.specialAttackAnimationUrl && heroData.specialAttackAnimationUrl.trim() !== '') {
+    try {
+      new URL(heroData.specialAttackAnimationUrl);
+    } catch (e) {
+      showMessage('URL de animación especial inválida. Se usará animación por defecto.', 'warning');
+      heroData.specialAttackAnimationUrl = '';
+    }
+  }
+
   try {
     const heroes = JSON.parse(localStorage.getItem('heroes') || '[]');
     
@@ -525,6 +538,16 @@ async function handleAddVillain(e) {
     }
   }
 
+  // Validar URL de animación especial si se proporciona
+  if (villainData.specialAttackAnimationUrl && villainData.specialAttackAnimationUrl.trim() !== '') {
+    try {
+      new URL(villainData.specialAttackAnimationUrl);
+    } catch (e) {
+      showMessage('URL de animación especial inválida. Se usará animación por defecto.', 'warning');
+      villainData.specialAttackAnimationUrl = '';
+    }
+  }
+
   try {
     const villains = JSON.parse(localStorage.getItem('villains') || '[]');
     
@@ -559,77 +582,210 @@ async function handleAddVillain(e) {
 }
 
 // Funciones para manejar música
-function handleLobbyMusicUpload(event) {
+async function handleLobbyMusicUpload(event) {
   const file = event.target.files[0];
-  if (file && file.type === 'audio/mpeg') {
-    lobbyMusicFile = file;
-    const info = document.getElementById('lobby-music-info');
-    const preview = document.getElementById('lobby-music-preview');
-    const removeBtn = document.getElementById('remove-lobby-music');
-    
-    info.innerHTML = `✅ ${file.name} (${(file.size / 1024 / 1024).toFixed(2)} MB)`;
-    preview.innerHTML = `
-      <audio controls class="w-full mt-2">
-        <source src="${URL.createObjectURL(file)}" type="audio/mpeg">
-      </audio>
-    `;
-    removeBtn.classList.remove('hidden');
-    
-    // Guardar en localStorage para persistencia
-    const reader = new FileReader();
-    reader.onload = function(e) {
-      const base64 = btoa(String.fromCharCode(...new Uint8Array(e.target.result)));
-      localStorage.setItem('lobbyMusicFile', base64);
-      console.log('🎵 Música de lobby guardada en localStorage');
-    };
-    reader.readAsArrayBuffer(file);
-    
-    showMessage('Música de lobby cargada exitosamente', 'success');
-    
-    // Reproducir automáticamente si estamos en una pantalla de lobby
-    if (currentMusicType !== 'battle') {
-      playLobbyMusic();
+  if (!file) {
+    showMessage('Por favor selecciona un archivo de música', 'error');
+    return;
+  }
+
+  // Validar tipo de archivo
+  const allowedTypes = ['audio/mpeg', 'audio/wav', 'audio/ogg', 'audio/mp4', 'audio/m4a'];
+  if (!allowedTypes.includes(file.type)) {
+    showMessage('Solo se permiten archivos de audio (MP3, WAV, OGG, M4A)', 'error');
+    return;
+  }
+
+  // Validar tamaño (10MB máximo)
+  if (file.size > 10 * 1024 * 1024) {
+    showMessage('El archivo es demasiado grande. Máximo 10MB', 'error');
+    return;
+  }
+
+  try {
+    const formData = new FormData();
+    formData.append('lobbyMusic', file);
+
+    const response = await fetch('/api/music/lobby', {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${localStorage.getItem('token')}`
+      },
+      body: formData
+    });
+
+    const result = await response.json();
+
+    if (response.ok) {
+      showMessage('Música de lobby guardada exitosamente', 'success');
+      
+      // Actualizar la interfaz
+      const info = document.getElementById('lobby-music-info');
+      const preview = document.getElementById('lobby-music-preview');
+      const removeBtn = document.getElementById('remove-lobby-music');
+      
+      if (info) info.innerHTML = `✅ ${result.fileName} (${(file.size / 1024 / 1024).toFixed(2)} MB)`;
+      if (preview) preview.innerHTML = `
+        <audio controls class="w-full mt-2">
+          <source src="${result.musicPath}" type="audio/mpeg">
+        </audio>
+      `;
+      if (removeBtn) removeBtn.classList.remove('hidden');
+      
+      // Cargar la nueva configuración de música
+      await loadMusicConfig();
+      
+      // Reproducir automáticamente si estamos en una pantalla de lobby
+      if (currentMusicType !== 'battle') {
+        playLobbyMusic();
+      }
+    } else {
+      showMessage(result.error || 'Error al guardar música de lobby', 'error');
     }
-  } else {
-    showMessage('Por favor selecciona un archivo MP3 válido', 'error');
+  } catch (error) {
+    console.error('Error al subir música de lobby:', error);
+    showMessage('Error al subir música de lobby', 'error');
   }
 }
 
-function handleBattleMusicUpload(event) {
+async function handleBattleMusicUpload(event) {
   const file = event.target.files[0];
-  if (file && file.type === 'audio/mpeg') {
-    battleMusicFile = file;
-    const info = document.getElementById('battle-music-info');
-    const preview = document.getElementById('battle-music-preview');
-    const removeBtn = document.getElementById('remove-battle-music');
+  if (!file) {
+    showMessage('Por favor selecciona un archivo de música', 'error');
+    return;
+  }
+
+  // Validar tipo de archivo
+  const allowedTypes = ['audio/mpeg', 'audio/wav', 'audio/ogg', 'audio/mp4', 'audio/m4a'];
+  if (!allowedTypes.includes(file.type)) {
+    showMessage('Solo se permiten archivos de audio (MP3, WAV, OGG, M4A)', 'error');
+    return;
+  }
+
+  // Validar tamaño (10MB máximo)
+  if (file.size > 10 * 1024 * 1024) {
+    showMessage('El archivo es demasiado grande. Máximo 10MB', 'error');
+    return;
+  }
+
+  try {
+    const formData = new FormData();
+    formData.append('battleMusic', file);
+
+    const response = await fetch('/api/music/battle', {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${localStorage.getItem('token')}`
+      },
+      body: formData
+    });
+
+    const result = await response.json();
+
+    if (response.ok) {
+      showMessage('Música de batalla guardada exitosamente', 'success');
+      
+      // Actualizar la interfaz
+      const info = document.getElementById('battle-music-info');
+      const preview = document.getElementById('battle-music-preview');
+      const removeBtn = document.getElementById('remove-battle-music');
+      
+      if (info) info.innerHTML = `✅ ${result.fileName} (${(file.size / 1024 / 1024).toFixed(2)} MB)`;
+      if (preview) preview.innerHTML = `
+        <audio controls class="w-full mt-2">
+          <source src="${result.musicPath}" type="audio/mpeg">
+        </audio>
+      `;
+      if (removeBtn) removeBtn.classList.remove('hidden');
+      
+      // Cargar la nueva configuración de música
+      await loadMusicConfig();
+    } else {
+      showMessage(result.error || 'Error al guardar música de batalla', 'error');
+    }
+  } catch (error) {
+    console.error('Error al subir música de batalla:', error);
+    showMessage('Error al subir música de batalla', 'error');
+  }
+}
+
+async function loadMusicConfig() {
+  try {
+    const response = await fetch('/api/music/config');
+    const config = await response.json();
     
-    info.innerHTML = `✅ ${file.name} (${(file.size / 1024 / 1024).toFixed(2)} MB)`;
-    preview.innerHTML = `
+    // Actualizar variables globales
+    if (config.lobbyMusic) {
+      lobbyMusicFile = config.lobbyMusic;
+      localStorage.setItem('lobbyMusicPath', config.lobbyMusic);
+    }
+    
+    if (config.battleMusic) {
+      battleMusicFile = config.battleMusic;
+      localStorage.setItem('battleMusicPath', config.battleMusic);
+    }
+    
+    // Actualizar interfaz si estamos en el panel de admin
+    updateMusicInterface(config);
+    
+    console.log('🎵 Configuración de música cargada:', config);
+  } catch (error) {
+    console.error('Error al cargar configuración de música:', error);
+  }
+}
+
+function updateMusicInterface(config) {
+  // Actualizar información de música de lobby
+  const lobbyInfo = document.getElementById('lobby-music-info');
+  const lobbyPreview = document.getElementById('lobby-music-preview');
+  const lobbyRemoveBtn = document.getElementById('remove-lobby-music');
+  
+  if (lobbyInfo) {
+    if (config.lobbyMusicName) {
+      lobbyInfo.innerHTML = `✅ ${config.lobbyMusicName} (${(config.lobbyMusicSize / 1024 / 1024).toFixed(2)} MB)`;
+      if (lobbyRemoveBtn) lobbyRemoveBtn.classList.remove('hidden');
+    } else {
+      lobbyInfo.innerHTML = 'No hay música configurada';
+      if (lobbyRemoveBtn) lobbyRemoveBtn.classList.add('hidden');
+    }
+  }
+  
+  if (lobbyPreview && config.lobbyMusic) {
+    lobbyPreview.innerHTML = `
       <audio controls class="w-full mt-2">
-        <source src="${URL.createObjectURL(file)}" type="audio/mpeg">
+        <source src="${config.lobbyMusic}" type="audio/mpeg">
       </audio>
     `;
-    removeBtn.classList.remove('hidden');
-    
-    // Guardar en localStorage para persistencia
-    const reader = new FileReader();
-    reader.onload = function(e) {
-      const base64 = btoa(String.fromCharCode(...new Uint8Array(e.target.result)));
-      localStorage.setItem('battleMusicFile', base64);
-      console.log('⚔️ Música de batalla guardada en localStorage');
-    };
-    reader.readAsArrayBuffer(file);
-    
-    showMessage('Música de batalla cargada exitosamente', 'success');
-  } else {
-    showMessage('Por favor selecciona un archivo MP3 válido', 'error');
+  }
+  
+  // Actualizar información de música de batalla
+  const battleInfo = document.getElementById('battle-music-info');
+  const battlePreview = document.getElementById('battle-music-preview');
+  const battleRemoveBtn = document.getElementById('remove-battle-music');
+  
+  if (battleInfo) {
+    if (config.battleMusicName) {
+      battleInfo.innerHTML = `✅ ${config.battleMusicName} (${(config.battleMusicSize / 1024 / 1024).toFixed(2)} MB)`;
+      if (battleRemoveBtn) battleRemoveBtn.classList.remove('hidden');
+    } else {
+      battleInfo.innerHTML = 'No hay música configurada';
+      if (battleRemoveBtn) battleRemoveBtn.classList.add('hidden');
+    }
+  }
+  
+  if (battlePreview && config.battleMusic) {
+    battlePreview.innerHTML = `
+      <audio controls class="w-full mt-2">
+        <source src="${config.battleMusic}" type="audio/mpeg">
+      </audio>
+    `;
   }
 }
 
 function playLobbyMusic() {
   if (lobbyMusicFile && isMusicEnabled) {
     stopMusic();
-    currentAudio = new Audio(URL.createObjectURL(lobbyMusicFile));
+    currentAudio = new Audio(lobbyMusicFile);
     currentAudio.loop = true;
     currentAudio.volume = isMusicMuted ? 0 : 0.5;
     currentMusicType = 'lobby';
@@ -646,9 +802,9 @@ function playLobbyMusic() {
 function playBattleMusic() {
   if (battleMusicFile && isMusicEnabled) {
     stopMusic();
-    currentAudio = new Audio(URL.createObjectURL(battleMusicFile));
+    currentAudio = new Audio(battleMusicFile);
     currentAudio.loop = true;
-    currentAudio.volume = isMusicMuted ? 0 : 0.7;
+    currentAudio.volume = isMusicMuted ? 0 : 0.5;
     currentMusicType = 'battle';
     
     currentAudio.play().then(() => {
@@ -663,120 +819,114 @@ function playBattleMusic() {
 function stopMusic() {
   if (currentAudio) {
     currentAudio.pause();
+    currentAudio.currentTime = 0;
     currentAudio = null;
-    console.log('🔇 Música detenida');
+    isMusicPaused = true;
   }
 }
 
-// Variable para controlar si la música está pausada
-let isMusicPaused = false;
-
 function toggleBattleMusic() {
-  const musicToggle = document.getElementById('music-toggle');
-  
-  if (isMusicPaused) {
-    // Reactivar música
-    if (battleMusicFile) {
-      playBattleMusic();
-      musicToggle.innerHTML = '🔊 Música';
-      musicToggle.className = 'bg-purple-600 text-white px-6 py-3 rounded-lg hover:bg-purple-700 transition';
+  if (currentMusicType === 'battle') {
+    if (isMusicPaused) {
+      currentAudio.play();
       isMusicPaused = false;
-    }
-  } else {
-    // Pausar música
-    if (currentAudio) {
+    } else {
       currentAudio.pause();
-      musicToggle.innerHTML = '🔇 Sin Música';
-      musicToggle.className = 'bg-gray-600 text-white px-6 py-3 rounded-lg hover:bg-gray-700 transition';
       isMusicPaused = true;
     }
   }
 }
 
-// Variable para controlar si la música está silenciada
-let isMusicMuted = false;
-
 function toggleLobbyMusic() {
-  const lobbyMusicToggle = document.getElementById('lobby-music-toggle');
-  const adminMusicToggle = document.getElementById('admin-music-toggle');
-  
-  if (isMusicMuted) {
-    // Reactivar música (subir volumen)
-    if (currentAudio) {
-      currentAudio.volume = 0.5; // Volumen normal de lobby
-      isMusicMuted = false;
-      
-      // Actualizar botones
-      if (lobbyMusicToggle) {
-        lobbyMusicToggle.innerHTML = '🔊 Música';
-        lobbyMusicToggle.className = 'bg-purple-600 text-white px-6 py-3 rounded-lg hover:bg-purple-700 transition';
-      }
-      if (adminMusicToggle) {
-        adminMusicToggle.innerHTML = '🔊 Música';
-        adminMusicToggle.className = 'bg-purple-600 text-white px-6 py-3 rounded-lg hover:bg-purple-700 transition';
-      }
-      
-      showMessage('Música reactivada', 'success');
-    }
-  } else {
-    // Silenciar música (bajar volumen a 0)
-    if (currentAudio) {
-      currentAudio.volume = 0;
-      isMusicMuted = true;
-      
-      // Actualizar botones
-      if (lobbyMusicToggle) {
-        lobbyMusicToggle.innerHTML = '🔇 Sin Música';
-        lobbyMusicToggle.className = 'bg-gray-600 text-white px-6 py-3 rounded-lg hover:bg-gray-700 transition';
-      }
-      if (adminMusicToggle) {
-        adminMusicToggle.innerHTML = '🔇 Sin Música';
-        adminMusicToggle.className = 'bg-gray-600 text-white px-6 py-3 rounded-lg hover:bg-gray-700 transition';
-      }
-      
-      showMessage('Música silenciada', 'info');
-    }
-  }
-}
-
-function removeLobbyMusic() {
-  lobbyMusicFile = null;
-  localStorage.removeItem('lobbyMusicFile');
-  
-  const info = document.getElementById('lobby-music-info');
-  const preview = document.getElementById('lobby-music-preview');
-  const removeBtn = document.getElementById('remove-lobby-music');
-  
-  if (info) info.innerHTML = '';
-  if (preview) preview.innerHTML = '';
-  if (removeBtn) removeBtn.classList.add('hidden');
-  
-  // Detener música si está reproduciendo lobby
   if (currentMusicType === 'lobby') {
-    stopMusic();
+    if (isMusicPaused) {
+      currentAudio.play();
+      isMusicPaused = false;
+    } else {
+      currentAudio.pause();
+      isMusicPaused = true;
+    }
   }
-  
-  showMessage('Música de lobby eliminada', 'success');
 }
 
-function removeBattleMusic() {
-  battleMusicFile = null;
-  localStorage.removeItem('battleMusicFile');
-  
-  const info = document.getElementById('battle-music-info');
-  const preview = document.getElementById('battle-music-preview');
-  const removeBtn = document.getElementById('remove-battle-music');
-  
-  if (info) info.innerHTML = '';
-  if (preview) preview.innerHTML = '';
-  if (removeBtn) removeBtn.classList.add('hidden');
-  
-  // Detener música si está reproduciendo batalla
-  if (currentMusicType === 'battle') {
-    stopMusic();
+async function removeLobbyMusic() {
+  try {
+    const response = await fetch('/api/music/lobby', {
+      method: 'DELETE',
+      headers: {
+        'Authorization': `Bearer ${localStorage.getItem('token')}`
+      }
+    });
+
+    const result = await response.json();
+
+    if (response.ok) {
+      showMessage('Música de lobby eliminada exitosamente', 'success');
+      
+      // Limpiar variables
+      lobbyMusicFile = null;
+      localStorage.removeItem('lobbyMusicPath');
+      
+      // Actualizar interfaz
+      const info = document.getElementById('lobby-music-info');
+      const preview = document.getElementById('lobby-music-preview');
+      const removeBtn = document.getElementById('remove-lobby-music');
+      
+      if (info) info.innerHTML = 'No hay música configurada';
+      if (preview) preview.innerHTML = '';
+      if (removeBtn) removeBtn.classList.add('hidden');
+      
+      // Detener reproducción si está sonando
+      if (currentMusicType === 'lobby') {
+        stopMusic();
+      }
+    } else {
+      showMessage(result.error || 'Error al eliminar música de lobby', 'error');
+    }
+  } catch (error) {
+    console.error('Error al eliminar música de lobby:', error);
+    showMessage('Error al eliminar música de lobby', 'error');
   }
-  
-  showMessage('Música de batalla eliminada', 'success');
+}
+
+async function removeBattleMusic() {
+  try {
+    const response = await fetch('/api/music/battle', {
+      method: 'DELETE',
+      headers: {
+        'Authorization': `Bearer ${localStorage.getItem('token')}`
+      }
+    });
+
+    const result = await response.json();
+
+    if (response.ok) {
+      showMessage('Música de batalla eliminada exitosamente', 'success');
+      
+      // Limpiar variables
+      battleMusicFile = null;
+      localStorage.removeItem('battleMusicPath');
+      
+      // Actualizar interfaz
+      const info = document.getElementById('battle-music-info');
+      const preview = document.getElementById('battle-music-preview');
+      const removeBtn = document.getElementById('remove-battle-music');
+      
+      if (info) info.innerHTML = 'No hay música configurada';
+      if (preview) preview.innerHTML = '';
+      if (removeBtn) removeBtn.classList.add('hidden');
+      
+      // Detener reproducción si está sonando
+      if (currentMusicType === 'battle') {
+        stopMusic();
+      }
+    } else {
+      showMessage(result.error || 'Error al eliminar música de batalla', 'error');
+    }
+  } catch (error) {
+    console.error('Error al eliminar música de batalla:', error);
+    showMessage('Error al eliminar música de batalla', 'error');
+  }
 }
 
 // Cargar héroes desde localStorage
@@ -878,13 +1028,23 @@ async function editHero(heroId) {
       }
     }
     
+    // Validar URL de animación especial
+    if (newAnimationUrl && newAnimationUrl.trim() !== '') {
+      try {
+        new URL(newAnimationUrl);
+      } catch (e) {
+        showMessage('URL de animación especial inválida. Se usará animación por defecto.', 'warning');
+        newAnimationUrl = '';
+      }
+    }
+    
     // Actualizar héroe
     hero.name = newName || hero.name;
     hero.alias = newAlias || hero.alias;
     hero.city = newCity || hero.city;
     hero.team = newTeam || hero.team;
     hero.image = newImage || '';
-    hero.specialAttackAnimationUrl = newAnimationUrl || hero.specialAttackAnimationUrl;
+    hero.specialAttackAnimationUrl = newAnimationUrl || '';
     
     localStorage.setItem('heroes', JSON.stringify(heroes));
     loadHeroes();
@@ -892,22 +1052,6 @@ async function editHero(heroId) {
   } catch (error) {
     console.error('Error al editar héroe:', error);
     showMessage('Error al editar héroe', 'error');
-  }
-}
-
-// Eliminar héroe
-async function deleteHero(heroId) {
-  if (confirm('¿Estás seguro de que quieres eliminar este héroe?')) {
-    try {
-      const heroes = JSON.parse(localStorage.getItem('heroes') || '[]');
-      const filteredHeroes = heroes.filter(h => h.heroId !== heroId);
-      localStorage.setItem('heroes', JSON.stringify(filteredHeroes));
-      loadHeroes();
-      showMessage('Héroe eliminado exitosamente', 'success');
-    } catch (error) {
-      console.error('Error al eliminar héroe:', error);
-      showMessage('Error al eliminar héroe', 'error');
-    }
   }
 }
 
@@ -950,13 +1094,23 @@ async function editVillain(villainId) {
       }
     }
     
+    // Validar URL de animación especial
+    if (newAnimationUrl && newAnimationUrl.trim() !== '') {
+      try {
+        new URL(newAnimationUrl);
+      } catch (e) {
+        showMessage('URL de animación especial inválida. Se usará animación por defecto.', 'warning');
+        newAnimationUrl = '';
+      }
+    }
+    
     // Actualizar villano
     villain.name = newName || villain.name;
     villain.alias = newAlias || villain.alias;
     villain.city = newCity || villain.city;
     villain.team = newTeam || villain.team;
     villain.image = newImage || '';
-    villain.specialAttackAnimationUrl = newAnimationUrl || villain.specialAttackAnimationUrl;
+    villain.specialAttackAnimationUrl = newAnimationUrl || '';
     
     localStorage.setItem('villains', JSON.stringify(villains));
     loadVillains();
@@ -964,6 +1118,22 @@ async function editVillain(villainId) {
   } catch (error) {
     console.error('Error al editar villano:', error);
     showMessage('Error al editar villano', 'error');
+  }
+}
+
+// Eliminar héroe
+async function deleteHero(heroId) {
+  if (confirm('¿Estás seguro de que quieres eliminar este héroe?')) {
+    try {
+      const heroes = JSON.parse(localStorage.getItem('heroes') || '[]');
+      const filteredHeroes = heroes.filter(h => h.heroId !== heroId);
+      localStorage.setItem('heroes', JSON.stringify(filteredHeroes));
+      loadHeroes();
+      showMessage('Héroe eliminado exitosamente', 'success');
+    } catch (error) {
+      console.error('Error al eliminar héroe:', error);
+      showMessage('Error al eliminar héroe', 'error');
+    }
   }
 }
 
@@ -1732,7 +1902,6 @@ function heroAttack(heroIndex, attackType) {
   checkBattleEnd();
 }
 
-// Función para mostrar animación especial de Iron Man
 // Función dinámica para mostrar animación especial
 function showDynamicSpecialAnimation(character, characterIndex, type) {
   // Crear el overlay de animación
@@ -1740,10 +1909,10 @@ function showDynamicSpecialAnimation(character, characterIndex, type) {
   animationOverlay.className = 'iron-man-special';
   
   // Si hay URL de animación personalizada, usarla
-  if (character.specialAttackAnimationUrl) {
+  if (character.specialAttackAnimationUrl && character.specialAttackAnimationUrl.trim() !== '') {
     animationOverlay.innerHTML = `
       <div class="custom-animation">
-        <img src="${character.specialAttackAnimationUrl}" alt="Animación especial" style="max-width: 100%; max-height: 100%; object-fit: contain;">
+        <img src="${character.specialAttackAnimationUrl}" alt="Animación especial" style="max-width: 100%; max-height: 100%; object-fit: contain;" onerror="this.style.display='none'; this.parentElement.innerHTML='<div style=\\'color: white; font-size: 24px; text-align: center;\\'>✨ ${character.name} usa su ataque especial! ✨</div>'">
       </div>
     `;
   } else {
@@ -1769,31 +1938,12 @@ function showDynamicSpecialAnimation(character, characterIndex, type) {
   // Agregar al DOM
   document.body.appendChild(animationOverlay);
   
-  // Reproducir sonido especial si está disponible
-  const characterId = character.heroId || character.villainId;
-  const soundFile = character.heroId ? heroSoundFiles[characterId] : villainSoundFiles[characterId];
-  
-  if (soundFile) {
-    try {
-      const audio = new Audio(URL.createObjectURL(soundFile));
-      audio.volume = 0.7;
-      audio.play().catch(error => {
-        console.log('No se pudo reproducir el sonido especial:', error);
-      });
-    } catch (error) {
-      console.log('Error al cargar el sonido especial:', error);
-    }
-  }
-  
   // Remover la animación después de 3 segundos
   setTimeout(() => {
     if (animationOverlay.parentNode) {
       animationOverlay.parentNode.removeChild(animationOverlay);
     }
   }, 3000);
-  
-  // Agregar mensaje especial al log
-  addBattleLog(`⚡ ¡${character.name.toUpperCase()} ejecuta su ATAQUE ESPECIAL!`);
 }
 
 // Ataque de villano
@@ -1980,74 +2130,47 @@ function logout() {
 
 
 // Función para cargar música guardada
-function loadSavedMusic() {
-  const savedLobbyMusic = localStorage.getItem('lobbyMusicFile');
-  const savedBattleMusic = localStorage.getItem('battleMusicFile');
-  
-  if (savedLobbyMusic) {
-    try {
-      const lobbyBlob = new Blob([Uint8Array.from(atob(savedLobbyMusic), c => c.charCodeAt(0))], { type: 'audio/mpeg' });
-      lobbyMusicFile = lobbyBlob;
-      
-      // Actualizar UI
-      const info = document.getElementById('lobby-music-info');
-      const removeBtn = document.getElementById('remove-lobby-music');
-      if (info) info.innerHTML = `✅ Música de lobby cargada desde almacenamiento`;
-      if (removeBtn) removeBtn.classList.remove('hidden');
-      
-      console.log('🎵 Música de lobby cargada desde localStorage');
-    } catch (error) {
-      console.error('Error al cargar música de lobby:', error);
+async function loadSavedMusic() {
+  try {
+    // Cargar configuración del servidor
+    await loadMusicConfig();
+    
+    // Cargar rutas guardadas en localStorage como fallback
+    const savedLobbyPath = localStorage.getItem('lobbyMusicPath');
+    const savedBattlePath = localStorage.getItem('battleMusicPath');
+    
+    if (savedLobbyPath && !lobbyMusicFile) {
+      lobbyMusicFile = savedLobbyPath;
     }
-  }
-  
-  if (savedBattleMusic) {
-    try {
-      const battleBlob = new Blob([Uint8Array.from(atob(savedBattleMusic), c => c.charCodeAt(0))], { type: 'audio/mpeg' });
-      battleMusicFile = battleBlob;
-      
-      // Actualizar UI
-      const info = document.getElementById('battle-music-info');
-      const removeBtn = document.getElementById('remove-battle-music');
-      if (info) info.innerHTML = `✅ Música de batalla cargada desde almacenamiento`;
-      if (removeBtn) removeBtn.classList.remove('hidden');
-      
-      console.log('⚔️ Música de batalla cargada desde localStorage');
-    } catch (error) {
-      console.error('Error al cargar música de batalla:', error);
+    
+    if (savedBattlePath && !battleMusicFile) {
+      battleMusicFile = savedBattlePath;
     }
+    
+    console.log('🎵 Música cargada desde servidor y localStorage');
+  } catch (error) {
+    console.error('Error al cargar música:', error);
   }
 }
 
-// Función para inicializar música automáticamente
-function initializeMusic() {
-  if (!musicInitialized) {
+// Inicializar sistema de música
+async function initializeMusic() {
+  if (musicInitialized) return;
+  
+  try {
+    await loadSavedMusic();
     musicInitialized = true;
     
-    // Cargar música desde localStorage si existe
-    const savedLobbyMusic = localStorage.getItem('lobbyMusicFile');
-    const savedBattleMusic = localStorage.getItem('battleMusicFile');
-    
-    if (savedLobbyMusic) {
-      // Convertir de base64 a blob
-      const lobbyBlob = new Blob([Uint8Array.from(atob(savedLobbyMusic), c => c.charCodeAt(0))], { type: 'audio/mpeg' });
-      lobbyMusicFile = lobbyBlob;
-      console.log('🎵 Música de lobby cargada desde localStorage');
-    }
-    
-    if (savedBattleMusic) {
-      // Convertir de base64 a blob
-      const battleBlob = new Blob([Uint8Array.from(atob(savedBattleMusic), c => c.charCodeAt(0))], { type: 'audio/mpeg' });
-      battleMusicFile = battleBlob;
-      console.log('⚔️ Música de batalla cargada desde localStorage');
-    }
-    
-    // Reproducir música de lobby automáticamente después de un breve delay
+    // Reproducir música de lobby automáticamente después de un delay
     setTimeout(() => {
-      if (lobbyMusicFile && isMusicEnabled) {
+      if (lobbyMusicFile && isMusicEnabled && !currentAudio) {
         playLobbyMusic();
       }
     }, 1000);
+    
+    console.log('🎵 Sistema de música inicializado');
+  } catch (error) {
+    console.error('Error al inicializar música:', error);
   }
 }
 
