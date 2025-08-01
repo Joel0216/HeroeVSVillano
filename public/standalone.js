@@ -1381,6 +1381,25 @@ function renderBattleScreen() {
           </div>
         </div>
       </div>
+      
+      <!-- Controles móviles -->
+      <div class="mobile-controls left">
+        <button onclick="triggerHeroAttack()" class="mobile-btn hero-attack">
+          A<br><small>Golpe</small>
+        </button>
+        <button onclick="triggerHeroSpecial()" class="mobile-btn hero-special">
+          Q<br><small>Especial</small>
+        </button>
+      </div>
+      
+      <div class="mobile-controls right">
+        <button onclick="triggerVillainAttack()" class="mobile-btn villain-attack">
+          L<br><small>Golpe</small>
+        </button>
+        <button onclick="triggerVillainSpecial()" class="mobile-btn villain-special">
+          O<br><small>Especial</small>
+        </button>
+      </div>
     </div>
   `;
   
@@ -1800,6 +1819,63 @@ function updateBattleInterface() {
       });
     }
   });
+  
+  // Actualizar botones móviles
+  updateMobileControls();
+}
+
+// Actualizar controles móviles
+function updateMobileControls() {
+  const activeHero = battleState.heroes.find(h => h.isActive && h.isAlive);
+  const activeVillain = battleState.villains.find(v => v.isActive && v.isAlive);
+  
+  // Botones del héroe
+  const heroAttackBtn = document.querySelector('.mobile-btn.hero-attack');
+  const heroSpecialBtn = document.querySelector('.mobile-btn.hero-special');
+  
+  if (heroAttackBtn) {
+    if (!activeHero) {
+      heroAttackBtn.disabled = true;
+      heroAttackBtn.classList.add('opacity-50');
+    } else {
+      heroAttackBtn.disabled = false;
+      heroAttackBtn.classList.remove('opacity-50');
+    }
+  }
+  
+  if (heroSpecialBtn) {
+    if (!activeHero || activeHero.power < 100) {
+      heroSpecialBtn.disabled = true;
+      heroSpecialBtn.classList.add('opacity-50');
+    } else {
+      heroSpecialBtn.disabled = false;
+      heroSpecialBtn.classList.remove('opacity-50');
+    }
+  }
+  
+  // Botones del villano
+  const villainAttackBtn = document.querySelector('.mobile-btn.villain-attack');
+  const villainSpecialBtn = document.querySelector('.mobile-btn.villain-special');
+  
+  if (villainAttackBtn) {
+    if (!activeVillain) {
+      villainAttackBtn.disabled = true;
+      villainAttackBtn.classList.add('opacity-50');
+    } else {
+      villainAttackBtn.disabled = false;
+      villainAttackBtn.classList.remove('opacity-50');
+    }
+  }
+  
+  if (villainSpecialBtn) {
+    if (!activeVillain || activeVillain.power < 100) {
+      villainSpecialBtn.disabled = true;
+      villainSpecialBtn.classList.add('opacity-50');
+    } else {
+      villainSpecialBtn.disabled = false;
+      villainSpecialBtn.classList.remove('opacity-50');
+    }
+  }
 }
 
 // Configurar controles de teclado
@@ -2537,4 +2613,49 @@ function showDynamicSpecialAnimation(animationUrl, characterName, attackType = '
       overlay.remove();
     }
   }, 4000);
+}
+
+// Funciones de trigger para controles móviles
+function triggerHeroAttack() {
+  if (!battleState.isActive) return;
+  
+  const activeHero = battleState.heroes.find(h => h.isActive && h.isAlive);
+  if (activeHero) {
+    const heroIndex = battleState.heroes.indexOf(activeHero);
+    performAttack('hero', heroIndex, 'normal');
+    addBattleLog(`📱 ${activeHero.name} ataca usando control móvil (A)`);
+  }
+}
+
+function triggerHeroSpecial() {
+  if (!battleState.isActive) return;
+  
+  const activeHero = battleState.heroes.find(h => h.isActive && h.isAlive);
+  if (activeHero) {
+    const heroIndex = battleState.heroes.indexOf(activeHero);
+    performAttack('hero', heroIndex, 'special');
+    addBattleLog(`📱 ${activeHero.name} usa ataque especial con control móvil (Q)`);
+  }
+}
+
+function triggerVillainAttack() {
+  if (!battleState.isActive) return;
+  
+  const activeVillain = battleState.villains.find(v => v.isActive && v.isAlive);
+  if (activeVillain) {
+    const villainIndex = battleState.villains.indexOf(activeVillain);
+    performAttack('villain', villainIndex, 'normal');
+    addBattleLog(`📱 ${activeVillain.name} ataca usando control móvil (L)`);
+  }
+}
+
+function triggerVillainSpecial() {
+  if (!battleState.isActive) return;
+  
+  const activeVillain = battleState.villains.find(v => v.isActive && v.isAlive);
+  if (activeVillain) {
+    const villainIndex = battleState.villains.indexOf(activeVillain);
+    performAttack('villain', villainIndex, 'special');
+    addBattleLog(`📱 ${activeVillain.name} usa ataque especial con control móvil (O)`);
+  }
 } 

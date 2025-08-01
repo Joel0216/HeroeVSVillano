@@ -105,9 +105,93 @@
       pointer-events: none;
     }
     
-    .eliminated button {
-      opacity: 0.5 !important;
-      pointer-events: none;
+    /* Controles móviles */
+    .mobile-controls {
+      position: fixed;
+      bottom: 20px;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      z-index: 1000;
+    }
+    
+    .mobile-controls.left {
+      left: 20px;
+    }
+    
+    .mobile-controls.right {
+      right: 20px;
+    }
+    
+    .mobile-btn {
+      padding: 15px;
+      font-size: 18px;
+      border-radius: 12px;
+      background-color: #222;
+      color: #fff;
+      border: 2px solid #fff;
+      width: 60px;
+      height: 60px;
+      text-align: center;
+      cursor: pointer;
+      transition: all 0.2s ease;
+      box-shadow: 0 4px 8px rgba(0, 0, 0, 0.3);
+    }
+    
+    .mobile-btn:hover {
+      transform: scale(1.05);
+    }
+    
+    .mobile-btn:active {
+      transform: scale(0.95);
+    }
+    
+    .mobile-btn.hero-attack {
+      background-color: #3b82f6;
+      border-color: #1d4ed8;
+    }
+    
+    .mobile-btn.hero-special {
+      background-color: #8b5cf6;
+      border-color: #6d28d9;
+    }
+    
+    .mobile-btn.villain-attack {
+      background-color: #ef4444;
+      border-color: #dc2626;
+    }
+    
+    .mobile-btn.villain-special {
+      background-color: #f59e0b;
+      border-color: #d97706;
+    }
+    
+    .mobile-btn:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+      transform: none;
+    }
+    
+    /* Responsive para móviles */
+    @media (max-width: 768px) {
+      .mobile-controls {
+        bottom: 10px;
+      }
+      
+      .mobile-controls.left {
+        left: 10px;
+      }
+      
+      .mobile-controls.right {
+        right: 10px;
+      }
+      
+      .mobile-btn {
+        width: 50px;
+        height: 50px;
+        font-size: 16px;
+        padding: 10px;
+      }
     }
     
     /* Animación de eliminación */
