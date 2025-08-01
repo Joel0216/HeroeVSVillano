@@ -3,12 +3,25 @@ import express from 'express';
 import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
 import User from '../models/User.js';
+import { isDBConnected } from '../db.js';
 
 const router = express.Router();
 const SECRET_KEY = 'tu_clave_secreta';
 
+// Middleware para verificar conexión a base de datos
+const checkDBConnection = (req, res, next) => {
+  if (!isDBConnected()) {
+    console.error('❌ Base de datos no conectada');
+    return res.status(503).json({ 
+      error: 'Servicio de base de datos no disponible',
+      message: 'Por favor, intenta más tarde'
+    });
+  }
+  next();
+};
+
 // Registro
-router.post('/register', async (req, res) => {
+router.post('/register', checkDBConnection, async (req, res) => {
   try {
     const { username, password } = req.body;
     console.log('📋 Registro solicitado:', { username });
@@ -78,7 +91,7 @@ router.post('/register', async (req, res) => {
 });
 
 // Login
-router.post('/login', async (req, res) => {
+router.post('/login', checkDBConnection, async (req, res) => {
   try {
     console.log('🔐 Intento de login:', { body: req.body });
     
