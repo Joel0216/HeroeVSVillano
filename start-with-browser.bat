@@ -18,9 +18,14 @@ echo ⚠️  IMPORTANTE: No accedas desde file://
 echo ✅ Usa: http://localhost:3001
 echo.
 
-REM Abrir navegador automáticamente en Windows
+REM Iniciar servidor en segundo plano
+start /B node app.js
+
+REM Esperar 3 segundos y abrir navegador
+timeout /t 3 /nobreak >nul
 start http://localhost:3001
 
-node app.js
-
+echo.
+echo ✅ Servidor iniciado y navegador abierto
+echo.
 pause 

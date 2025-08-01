@@ -19,18 +19,27 @@ echo "⚠️  IMPORTANTE: No accedas desde file://"
 echo "✅ Usa: http://localhost:3001"
 echo ""
 
-# Abrir navegador automáticamente (solo en sistemas que lo soporten)
+# Iniciar servidor en segundo plano
+node app.js &
+SERVER_PID=$!
+
+# Esperar 3 segundos y abrir navegador
+sleep 3
+
+# Abrir navegador automáticamente
 if command -v xdg-open &> /dev/null; then
     # Linux
-    sleep 2 && xdg-open http://localhost:3001 &
+    xdg-open http://localhost:3001
 elif command -v open &> /dev/null; then
     # macOS
-    sleep 2 && open http://localhost:3001 &
-elif command -v start &> /dev/null; then
-    # Windows (si se ejecuta desde WSL)
-    sleep 2 && start http://localhost:3001 &
+    open http://localhost:3001
 else
     echo "💡 Abre manualmente: http://localhost:3001"
 fi
 
-node app.js 
+echo ""
+echo "✅ Servidor iniciado y navegador abierto"
+echo ""
+
+# Mantener el script corriendo
+wait $SERVER_PID 
