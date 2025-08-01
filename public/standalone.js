@@ -1804,55 +1804,79 @@ function updateBattleInterface() {
 
 // Configurar controles de teclado
 function setupKeyboardControls() {
+  let keySequence = '';
+  let keyTimeout;
+  
   document.addEventListener('keydown', function(event) {
     if (!battleState.isActive) return;
     
     const key = event.key.toLowerCase();
     
-    // Verificar combinaciones de teclas
-    if (event.ctrlKey || event.altKey || event.metaKey) return; // Ignorar combinaciones con teclas modificadoras
+    // Ignorar teclas modificadoras
+    if (event.ctrlKey || event.altKey || event.metaKey) return;
     
-    if (key === 'g') {
-      // Golpes
-      setTimeout(() => {
-        const nextKey = event.key.toLowerCase();
-        if (nextKey === 'h') {
+    // Limpiar secuencia anterior si han pasado más de 500ms
+    if (keyTimeout) {
+      clearTimeout(keyTimeout);
+    }
+    
+    // Agregar tecla a la secuencia
+    keySequence += key;
+    
+    // Procesar combinaciones
+    if (keySequence.length >= 2) {
+      const combination = keySequence.slice(-2);
+      
+      switch (combination) {
+        case 'gh':
           // Golpe del héroe activo
           const activeHero = battleState.heroes.find(h => h.isActive && h.isAlive);
           if (activeHero) {
             const heroIndex = battleState.heroes.indexOf(activeHero);
             performAttack('hero', heroIndex, 'normal');
+            addBattleLog(`⌨️ ${activeHero.name} ataca usando teclado (G+H)`);
           }
-        } else if (nextKey === 'v') {
+          break;
+          
+        case 'gv':
           // Golpe del villano activo
           const activeVillain = battleState.villains.find(v => v.isActive && v.isAlive);
           if (activeVillain) {
             const villainIndex = battleState.villains.indexOf(activeVillain);
             performAttack('villain', villainIndex, 'normal');
+            addBattleLog(`⌨️ ${activeVillain.name} ataca usando teclado (G+V)`);
           }
-        }
-      }, 100);
-    } else if (key === 'e') {
-      // Ataques especiales
-      setTimeout(() => {
-        const nextKey = event.key.toLowerCase();
-        if (nextKey === 'h') {
+          break;
+          
+        case 'eh':
           // Ataque especial del héroe activo
-          const activeHero = battleState.heroes.find(h => h.isActive && h.isAlive);
-          if (activeHero) {
-            const heroIndex = battleState.heroes.indexOf(activeHero);
+          const activeHeroSpecial = battleState.heroes.find(h => h.isActive && h.isAlive);
+          if (activeHeroSpecial) {
+            const heroIndex = battleState.heroes.indexOf(activeHeroSpecial);
             performAttack('hero', heroIndex, 'special');
+            addBattleLog(`⌨️ ${activeHeroSpecial.name} usa ataque especial con teclado (E+H)`);
           }
-        } else if (nextKey === 'v') {
+          break;
+          
+        case 'ev':
           // Ataque especial del villano activo
-          const activeVillain = battleState.villains.find(v => v.isActive && v.isAlive);
-          if (activeVillain) {
-            const villainIndex = battleState.villains.indexOf(activeVillain);
+          const activeVillainSpecial = battleState.villains.find(v => v.isActive && v.isAlive);
+          if (activeVillainSpecial) {
+            const villainIndex = battleState.villains.indexOf(activeVillainSpecial);
             performAttack('villain', villainIndex, 'special');
+            addBattleLog(`⌨️ ${activeVillainSpecial.name} usa ataque especial con teclado (E+V)`);
           }
-        }
-      }, 100);
+          break;
+      }
+      
+      // Limpiar secuencia después de procesar
+      keySequence = '';
     }
+    
+    // Limpiar secuencia después de 500ms si no se completó
+    keyTimeout = setTimeout(() => {
+      keySequence = '';
+    }, 500);
   });
 }
 
