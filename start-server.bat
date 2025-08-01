@@ -1,13 +1,23 @@
 @echo off
-echo 🚀 Iniciando servidor DataFight...
 echo.
-echo 📁 Verificando dependencias...
+echo ========================================
+echo    HEROES VS VILLANOS - SERVIDOR
+echo ========================================
+echo.
+
+echo 🔧 Instalando dependencias...
 npm install
+
 echo.
-echo 🌐 Iniciando servidor en http://localhost:3001
-echo 📱 Abriendo navegador automáticamente...
+echo 🚀 Iniciando servidor...
 echo.
-echo ⚠️  IMPORTANTE: Usa http://localhost:3001 en lugar de file://
+echo 📍 Accede a: http://localhost:3001
+echo 📍 Documentación: http://localhost:3001/api-docs
 echo.
+echo ⚠️  IMPORTANTE: No accedas desde file://
+echo ✅ Usa: http://localhost:3001
+echo.
+
 node app.js
+
 pause 

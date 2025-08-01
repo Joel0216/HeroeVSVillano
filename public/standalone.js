@@ -220,6 +220,10 @@ async function handleAuth(mode) {
   errorDiv.textContent = '';
   
   try {
+    if (!canMakeFetch()) {
+      throw new Error('No se puede hacer autenticación en modo file://');
+    }
+    
     const endpoint = mode === 'register' ? '/api/auth/register' : '/api/auth/login';
     
     const response = await apiFetch(endpoint, {
@@ -252,7 +256,9 @@ async function handleAuth(mode) {
     console.error('Error en autenticación:', error);
     
     // Mostrar mensaje de error específico
-    if (error.message.includes('401')) {
+    if (error.message.includes('file://')) {
+      errorDiv.textContent = 'Error: Debes acceder desde http://localhost:3001, no desde file://';
+    } else if (error.message.includes('401')) {
       errorDiv.textContent = 'Usuario o contraseña incorrectos';
     } else if (error.message.includes('400')) {
       errorDiv.textContent = 'El usuario ya existe';
@@ -666,25 +672,35 @@ async function handleBattleMusicUpload(event) {
 
 async function loadMusicConfig() {
   try {
+    if (!canMakeFetch()) {
+      console.log('⚠️ Modo file:// detectado, usando configuración local de música');
+      // Usar configuración local si está disponible
+      const localConfig = JSON.parse(localStorage.getItem('musicConfig') || '{}');
+      if (localConfig.lobbyMusic || localConfig.battleMusic) {
+        updateMusicInterface(localConfig);
+      }
+      return;
+    }
+    
     const config = await apiFetch('/api/music/config');
-    
-    // Actualizar variables globales
-    if (config.lobbyMusic) {
-      lobbyMusicFile = config.lobbyMusic;
-      localStorage.setItem('lobbyMusicPath', config.lobbyMusic);
-    }
-    
-    if (config.battleMusic) {
-      battleMusicFile = config.battleMusic;
-      localStorage.setItem('battleMusicPath', config.battleMusic);
-    }
-    
-    // Actualizar interfaz si estamos en el panel de admin
+    console.log('✅ Configuración de música cargada:', config);
     updateMusicInterface(config);
     
-    console.log('🎵 Configuración de música cargada:', config);
+    // Guardar configuración localmente como fallback
+    localStorage.setItem('musicConfig', JSON.stringify(config));
   } catch (error) {
-    console.error('Error al cargar configuración de música:', error);
+    console.error('❌ Error cargando configuración de música:', error);
+    
+    // Intentar usar configuración local como fallback
+    try {
+      const localConfig = JSON.parse(localStorage.getItem('musicConfig') || '{}');
+      if (localConfig.lobbyMusic || localConfig.battleMusic) {
+        console.log('🔄 Usando configuración local como fallback');
+        updateMusicInterface(localConfig);
+      }
+    } catch (fallbackError) {
+      console.error('❌ Error con fallback local:', fallbackError);
+    }
   }
 }
 
@@ -896,60 +912,34 @@ async function removeBattleMusic() {
 // Cargar héroes desde localStorage
 async function loadHeroes() {
   try {
-    const heroes = JSON.parse(localStorage.getItem('heroes') || '[]');
-    const heroesList = document.getElementById('heroes-list');
-    
-    if (heroesList) {
-      heroesList.innerHTML = '';
-      
-      heroes.forEach(hero => {
-        const heroDiv = document.createElement('div');
-        heroDiv.className = 'flex justify-between items-center p-3 bg-gray-50 rounded';
-        heroDiv.innerHTML = `
-          <div>
-            <strong>${hero.name}</strong> (${hero.alias})
-            <br><small class="text-gray-600">${hero.city} - ${hero.team}</small>
-          </div>
-          <div class="flex gap-2">
-            <button onclick="editHero('${hero.heroId}')" class="bg-yellow-500 text-white px-2 py-1 rounded text-sm">Editar</button>
-            <button onclick="deleteHero('${hero.heroId}')" class="bg-red-500 text-white px-2 py-1 rounded text-sm">Eliminar</button>
-          </div>
-        `;
-        heroesList.appendChild(heroDiv);
-      });
+    if (!canMakeFetch()) {
+      console.log('⚠️ Modo file:// detectado, usando datos locales para héroes');
+      return;
     }
+    
+    const heroes = await apiFetch('/api/heroes');
+    heroesData = heroes;
+    console.log('✅ Héroes cargados:', heroesData.length);
   } catch (error) {
-    console.error('Error al cargar héroes:', error);
+    console.error('❌ Error cargando héroes:', error);
+    showMessage('Error cargando héroes', 'error');
   }
 }
 
 // Cargar villanos desde localStorage
 async function loadVillains() {
   try {
-    const villains = JSON.parse(localStorage.getItem('villains') || '[]');
-    const villainsList = document.getElementById('villains-list');
-    
-    if (villainsList) {
-      villainsList.innerHTML = '';
-      
-      villains.forEach(villain => {
-        const villainDiv = document.createElement('div');
-        villainDiv.className = 'flex justify-between items-center p-3 bg-gray-50 rounded';
-        villainDiv.innerHTML = `
-          <div>
-            <strong>${villain.name}</strong> (${villain.alias})
-            <br><small class="text-gray-600">${villain.city} - ${villain.team}</small>
-          </div>
-          <div class="flex gap-2">
-            <button onclick="editVillain('${villain.villainId}')" class="bg-yellow-500 text-white px-2 py-1 rounded text-sm">Editar</button>
-            <button onclick="deleteVillain('${villain.villainId}')" class="bg-red-500 text-white px-2 py-1 rounded text-sm">Eliminar</button>
-          </div>
-        `;
-        villainsList.appendChild(villainDiv);
-      });
+    if (!canMakeFetch()) {
+      console.log('⚠️ Modo file:// detectado, usando datos locales para villanos');
+      return;
     }
+    
+    const villains = await apiFetch('/api/villains');
+    villainsData = villains;
+    console.log('✅ Villanos cargados:', villainsData.length);
   } catch (error) {
-    console.error('Error al cargar villanos:', error);
+    console.error('❌ Error cargando villanos:', error);
+    showMessage('Error cargando villanos', 'error');
   }
 }
 
@@ -2153,6 +2143,11 @@ document.addEventListener('DOMContentLoaded', () => {
 
 // Función helper para hacer fetch con manejo de errores CORS
 async function apiFetch(endpoint, options = {}) {
+  // Verificar si se puede hacer fetch
+  if (!canMakeFetch()) {
+    throw new Error('No se puede hacer fetch en modo file://');
+  }
+  
   const baseUrl = window.location.origin; // Usa localhost automáticamente
   const url = `${baseUrl}${endpoint}`;
   
@@ -2195,6 +2190,11 @@ async function apiFetch(endpoint, options = {}) {
 
 // Función helper para subir archivos
 async function uploadFile(endpoint, file, fieldName) {
+  // Verificar si se puede hacer fetch
+  if (!canMakeFetch()) {
+    throw new Error('No se puede hacer fetch en modo file://');
+  }
+  
   const baseUrl = window.location.origin;
   const url = `${baseUrl}${endpoint}`;
   
@@ -2249,10 +2249,16 @@ async function uploadFile(endpoint, file, fieldName) {
   }
 }
 
+// Variable global para detectar si estamos en modo file://
+let isFileProtocol = false;
+
 // Detectar si el usuario está accediendo desde file://
 function checkFileProtocol() {
   if (window.location.protocol === 'file:') {
+    isFileProtocol = true;
+    
     const warningDiv = document.createElement('div');
+    warningDiv.id = 'file-protocol-warning';
     warningDiv.style.cssText = `
       position: fixed;
       top: 0;
@@ -2260,31 +2266,82 @@ function checkFileProtocol() {
       right: 0;
       background: linear-gradient(135deg, #ff6b6b, #ee5a24);
       color: white;
-      padding: 15px;
+      padding: 20px;
       text-align: center;
       font-weight: bold;
       z-index: 10000;
-      box-shadow: 0 2px 10px rgba(0,0,0,0.3);
+      box-shadow: 0 4px 20px rgba(0,0,0,0.4);
+      font-size: 16px;
+      line-height: 1.5;
     `;
     warningDiv.innerHTML = `
       ⚠️ <strong>ERROR:</strong> Estás accediendo desde file:// 
-      <br>Para que funcione correctamente, ejecuta: <code>node app.js</code> y accede desde <a href="http://localhost:3001" style="color: white; text-decoration: underline;">http://localhost:3001</a>
-      <button onclick="this.parentElement.remove()" style="margin-left: 10px; padding: 5px 10px; background: white; color: #ff6b6b; border: none; border-radius: 3px; cursor: pointer;">Cerrar</button>
+      <br><br>
+      <strong>Para que funcione correctamente:</strong>
+      <br>1. Ejecuta: <code>node app.js</code>
+      <br>2. Accede desde: <a href="http://localhost:3001" style="color: white; text-decoration: underline; font-weight: bold;">http://localhost:3001</a>
+      <br><br>
+      <button onclick="this.parentElement.remove()" style="margin: 10px; padding: 8px 16px; background: white; color: #ff6b6b; border: none; border-radius: 5px; cursor: pointer; font-weight: bold;">Cerrar</button>
     `;
     document.body.appendChild(warningDiv);
     
     console.error('❌ Error: Acceso desde file:// detectado');
     console.log('💡 Solución: Ejecuta "node app.js" y accede desde http://localhost:3001');
     
+    // Deshabilitar funcionalidades que requieren servidor
+    disableServerFeatures();
+    
     return true;
   }
   return false;
 }
 
+// Función para deshabilitar características que requieren servidor
+function disableServerFeatures() {
+  console.log('🔒 Deshabilitando características que requieren servidor...');
+  
+  // Deshabilitar botones de autenticación
+  const authButtons = document.querySelectorAll('button[onclick*="showAuthForm"]');
+  authButtons.forEach(button => {
+    button.disabled = true;
+    button.title = 'Requiere servidor local';
+    button.style.opacity = '0.5';
+  });
+  
+  // Deshabilitar botones de música
+  const musicButtons = document.querySelectorAll('button[id*="music"]');
+  musicButtons.forEach(button => {
+    button.disabled = true;
+    button.title = 'Requiere servidor local';
+    button.style.opacity = '0.5';
+  });
+  
+  // Deshabilitar formularios de admin
+  const adminForms = document.querySelectorAll('form[id*="hero"], form[id*="villain"]');
+  adminForms.forEach(form => {
+    const submitButton = form.querySelector('button[type="submit"]');
+    if (submitButton) {
+      submitButton.disabled = true;
+      submitButton.title = 'Requiere servidor local';
+      submitButton.style.opacity = '0.5';
+    }
+  });
+}
+
+// Función para verificar si se puede hacer fetch
+function canMakeFetch() {
+  if (isFileProtocol) {
+    console.warn('⚠️ Modo file:// detectado, omitiendo llamadas a API');
+    showMessage('Error: Debes acceder desde http://localhost:3001, no desde file://', 'error');
+    return false;
+  }
+  return true;
+}
+
 // Ejecutar verificación al cargar
 document.addEventListener('DOMContentLoaded', function() {
   checkFileProtocol();
-}); 
+});
 
 // Función para verificar si el usuario está autenticado
 function isAuthenticated() {
