@@ -603,44 +603,29 @@ async function handleLobbyMusicUpload(event) {
   }
 
   try {
-    const formData = new FormData();
-    formData.append('lobbyMusic', file);
-
-    const response = await fetch('/api/music/lobby', {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${localStorage.getItem('token')}`
-      },
-      body: formData
-    });
-
-    const result = await response.json();
-
-    if (response.ok) {
-      showMessage('Música de lobby guardada exitosamente', 'success');
-      
-      // Actualizar la interfaz
-      const info = document.getElementById('lobby-music-info');
-      const preview = document.getElementById('lobby-music-preview');
-      const removeBtn = document.getElementById('remove-lobby-music');
-      
-      if (info) info.innerHTML = `✅ ${result.fileName} (${(file.size / 1024 / 1024).toFixed(2)} MB)`;
-      if (preview) preview.innerHTML = `
-        <audio controls class="w-full mt-2">
-          <source src="${result.musicPath}" type="audio/mpeg">
-        </audio>
-      `;
-      if (removeBtn) removeBtn.classList.remove('hidden');
-      
-      // Cargar la nueva configuración de música
-      await loadMusicConfig();
-      
-      // Reproducir automáticamente si estamos en una pantalla de lobby
-      if (currentMusicType !== 'battle') {
-        playLobbyMusic();
-      }
-    } else {
-      showMessage(result.error || 'Error al guardar música de lobby', 'error');
+    const result = await uploadFile('/api/music/lobby', file, 'lobbyMusic');
+    
+    showMessage('Música de lobby guardada exitosamente', 'success');
+    
+    // Actualizar la interfaz
+    const info = document.getElementById('lobby-music-info');
+    const preview = document.getElementById('lobby-music-preview');
+    const removeBtn = document.getElementById('remove-lobby-music');
+    
+    if (info) info.innerHTML = `✅ ${result.fileName} (${(file.size / 1024 / 1024).toFixed(2)} MB)`;
+    if (preview) preview.innerHTML = `
+      <audio controls class="w-full mt-2">
+        <source src="${result.musicPath}" type="audio/mpeg">
+      </audio>
+    `;
+    if (removeBtn) removeBtn.classList.remove('hidden');
+    
+    // Cargar la nueva configuración de música
+    await loadMusicConfig();
+    
+    // Reproducir automáticamente si estamos en una pantalla de lobby
+    if (currentMusicType !== 'battle') {
+      playLobbyMusic();
     }
   } catch (error) {
     console.error('Error al subir música de lobby:', error);
@@ -669,40 +654,25 @@ async function handleBattleMusicUpload(event) {
   }
 
   try {
-    const formData = new FormData();
-    formData.append('battleMusic', file);
-
-    const response = await fetch('/api/music/battle', {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${localStorage.getItem('token')}`
-      },
-      body: formData
-    });
-
-    const result = await response.json();
-
-    if (response.ok) {
-      showMessage('Música de batalla guardada exitosamente', 'success');
-      
-      // Actualizar la interfaz
-      const info = document.getElementById('battle-music-info');
-      const preview = document.getElementById('battle-music-preview');
-      const removeBtn = document.getElementById('remove-battle-music');
-      
-      if (info) info.innerHTML = `✅ ${result.fileName} (${(file.size / 1024 / 1024).toFixed(2)} MB)`;
-      if (preview) preview.innerHTML = `
-        <audio controls class="w-full mt-2">
-          <source src="${result.musicPath}" type="audio/mpeg">
-        </audio>
-      `;
-      if (removeBtn) removeBtn.classList.remove('hidden');
-      
-      // Cargar la nueva configuración de música
-      await loadMusicConfig();
-    } else {
-      showMessage(result.error || 'Error al guardar música de batalla', 'error');
-    }
+    const result = await uploadFile('/api/music/battle', file, 'battleMusic');
+    
+    showMessage('Música de batalla guardada exitosamente', 'success');
+    
+    // Actualizar la interfaz
+    const info = document.getElementById('battle-music-info');
+    const preview = document.getElementById('battle-music-preview');
+    const removeBtn = document.getElementById('remove-battle-music');
+    
+    if (info) info.innerHTML = `✅ ${result.fileName} (${(file.size / 1024 / 1024).toFixed(2)} MB)`;
+    if (preview) preview.innerHTML = `
+      <audio controls class="w-full mt-2">
+        <source src="${result.musicPath}" type="audio/mpeg">
+      </audio>
+    `;
+    if (removeBtn) removeBtn.classList.remove('hidden');
+    
+    // Cargar la nueva configuración de música
+    await loadMusicConfig();
   } catch (error) {
     console.error('Error al subir música de batalla:', error);
     showMessage('Error al subir música de batalla', 'error');
@@ -711,8 +681,7 @@ async function handleBattleMusicUpload(event) {
 
 async function loadMusicConfig() {
   try {
-    const response = await fetch('/api/music/config');
-    const config = await response.json();
+    const config = await apiFetch('/api/music/config');
     
     // Actualizar variables globales
     if (config.lobbyMusic) {
@@ -851,37 +820,31 @@ function toggleLobbyMusic() {
 
 async function removeLobbyMusic() {
   try {
-    const response = await fetch('/api/music/lobby', {
+    const result = await apiFetch('/api/music/lobby', {
       method: 'DELETE',
       headers: {
         'Authorization': `Bearer ${localStorage.getItem('token')}`
       }
     });
 
-    const result = await response.json();
-
-    if (response.ok) {
-      showMessage('Música de lobby eliminada exitosamente', 'success');
-      
-      // Limpiar variables
-      lobbyMusicFile = null;
-      localStorage.removeItem('lobbyMusicPath');
-      
-      // Actualizar interfaz
-      const info = document.getElementById('lobby-music-info');
-      const preview = document.getElementById('lobby-music-preview');
-      const removeBtn = document.getElementById('remove-lobby-music');
-      
-      if (info) info.innerHTML = 'No hay música configurada';
-      if (preview) preview.innerHTML = '';
-      if (removeBtn) removeBtn.classList.add('hidden');
-      
-      // Detener reproducción si está sonando
-      if (currentMusicType === 'lobby') {
-        stopMusic();
-      }
-    } else {
-      showMessage(result.error || 'Error al eliminar música de lobby', 'error');
+    showMessage('Música de lobby eliminada exitosamente', 'success');
+    
+    // Limpiar variables
+    lobbyMusicFile = null;
+    localStorage.removeItem('lobbyMusicPath');
+    
+    // Actualizar interfaz
+    const info = document.getElementById('lobby-music-info');
+    const preview = document.getElementById('lobby-music-preview');
+    const removeBtn = document.getElementById('remove-lobby-music');
+    
+    if (info) info.innerHTML = 'No hay música configurada';
+    if (preview) preview.innerHTML = '';
+    if (removeBtn) removeBtn.classList.add('hidden');
+    
+    // Detener reproducción si está sonando
+    if (currentMusicType === 'lobby') {
+      stopMusic();
     }
   } catch (error) {
     console.error('Error al eliminar música de lobby:', error);
@@ -891,37 +854,31 @@ async function removeLobbyMusic() {
 
 async function removeBattleMusic() {
   try {
-    const response = await fetch('/api/music/battle', {
+    const result = await apiFetch('/api/music/battle', {
       method: 'DELETE',
       headers: {
         'Authorization': `Bearer ${localStorage.getItem('token')}`
       }
     });
 
-    const result = await response.json();
-
-    if (response.ok) {
-      showMessage('Música de batalla eliminada exitosamente', 'success');
-      
-      // Limpiar variables
-      battleMusicFile = null;
-      localStorage.removeItem('battleMusicPath');
-      
-      // Actualizar interfaz
-      const info = document.getElementById('battle-music-info');
-      const preview = document.getElementById('battle-music-preview');
-      const removeBtn = document.getElementById('remove-battle-music');
-      
-      if (info) info.innerHTML = 'No hay música configurada';
-      if (preview) preview.innerHTML = '';
-      if (removeBtn) removeBtn.classList.add('hidden');
-      
-      // Detener reproducción si está sonando
-      if (currentMusicType === 'battle') {
-        stopMusic();
-      }
-    } else {
-      showMessage(result.error || 'Error al eliminar música de batalla', 'error');
+    showMessage('Música de batalla eliminada exitosamente', 'success');
+    
+    // Limpiar variables
+    battleMusicFile = null;
+    localStorage.removeItem('battleMusicPath');
+    
+    // Actualizar interfaz
+    const info = document.getElementById('battle-music-info');
+    const preview = document.getElementById('battle-music-preview');
+    const removeBtn = document.getElementById('remove-battle-music');
+    
+    if (info) info.innerHTML = 'No hay música configurada';
+    if (preview) preview.innerHTML = '';
+    if (removeBtn) removeBtn.classList.add('hidden');
+    
+    // Detener reproducción si está sonando
+    if (currentMusicType === 'battle') {
+      stopMusic();
     }
   } catch (error) {
     console.error('Error al eliminar música de batalla:', error);
@@ -2184,4 +2141,107 @@ document.addEventListener('DOMContentLoaded', () => {
   setTimeout(() => {
     initializeMusic();
   }, 500);
+}); 
+
+// Función helper para hacer fetch con manejo de errores CORS
+async function apiFetch(endpoint, options = {}) {
+  const baseUrl = window.location.origin; // Usa localhost automáticamente
+  const url = `${baseUrl}${endpoint}`;
+  
+  try {
+    const response = await fetch(url, {
+      ...options,
+      headers: {
+        'Content-Type': 'application/json',
+        ...options.headers
+      }
+    });
+    
+    if (!response.ok) {
+      throw new Error(`HTTP error! status: ${response.status}`);
+    }
+    
+    return await response.json();
+  } catch (error) {
+    console.error(`Error en fetch a ${endpoint}:`, error);
+    
+    // Si es error de CORS, mostrar mensaje específico
+    if (error.message.includes('CORS') || error.message.includes('Failed to fetch')) {
+      showMessage('Error: Debes acceder desde http://localhost:3001, no desde file://', 'error');
+      console.error('💡 Solución: Ejecuta "node app.js" y accede desde http://localhost:3001');
+    }
+    
+    throw error;
+  }
+}
+
+// Función helper para subir archivos
+async function uploadFile(endpoint, file, fieldName) {
+  const baseUrl = window.location.origin;
+  const url = `${baseUrl}${endpoint}`;
+  
+  const formData = new FormData();
+  formData.append(fieldName, file);
+  
+  try {
+    const response = await fetch(url, {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${localStorage.getItem('token')}`
+      },
+      body: formData
+    });
+    
+    if (!response.ok) {
+      throw new Error(`HTTP error! status: ${response.status}`);
+    }
+    
+    return await response.json();
+  } catch (error) {
+    console.error(`Error al subir archivo a ${endpoint}:`, error);
+    
+    if (error.message.includes('CORS') || error.message.includes('Failed to fetch')) {
+      showMessage('Error: Debes acceder desde http://localhost:3001, no desde file://', 'error');
+      console.error('💡 Solución: Ejecuta "node app.js" y accede desde http://localhost:3001');
+    }
+    
+    throw error;
+  }
+} 
+
+// Detectar si el usuario está accediendo desde file://
+function checkFileProtocol() {
+  if (window.location.protocol === 'file:') {
+    const warningDiv = document.createElement('div');
+    warningDiv.style.cssText = `
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      background: linear-gradient(135deg, #ff6b6b, #ee5a24);
+      color: white;
+      padding: 15px;
+      text-align: center;
+      font-weight: bold;
+      z-index: 10000;
+      box-shadow: 0 2px 10px rgba(0,0,0,0.3);
+    `;
+    warningDiv.innerHTML = `
+      ⚠️ <strong>ERROR:</strong> Estás accediendo desde file:// 
+      <br>Para que funcione correctamente, ejecuta: <code>node app.js</code> y accede desde <a href="http://localhost:3001" style="color: white; text-decoration: underline;">http://localhost:3001</a>
+      <button onclick="this.parentElement.remove()" style="margin-left: 10px; padding: 5px 10px; background: white; color: #ff6b6b; border: none; border-radius: 3px; cursor: pointer;">Cerrar</button>
+    `;
+    document.body.appendChild(warningDiv);
+    
+    console.error('❌ Error: Acceso desde file:// detectado');
+    console.log('💡 Solución: Ejecuta "node app.js" y accede desde http://localhost:3001');
+    
+    return true;
+  }
+  return false;
+}
+
+// Ejecutar verificación al cargar
+document.addEventListener('DOMContentLoaded', function() {
+  checkFileProtocol();
 }); 
