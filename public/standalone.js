@@ -1322,7 +1322,7 @@ function startBattle() {
   showBattleScreen();
 }
 
-// Renderizar pantalla de batalla
+// Renderizar pantalla de batalla con nuevo diseño
 function renderBattleScreen() {
   if (!battleScreen) return;
   
@@ -1330,45 +1330,56 @@ function renderBattleScreen() {
   const battleVillains = JSON.parse(localStorage.getItem('battleVillains') || '[]');
   
   battleScreen.innerHTML = `
-    <div class="flex flex-col items-center justify-center space-y-6 w-full max-w-6xl mx-auto">
-      <h2 class="text-3xl font-bold text-white mb-4">⚔️ Batalla Épica</h2>
+    <div class="flex flex-col items-center justify-center space-y-6 w-full max-w-7xl mx-auto p-4">
+      <h2 class="text-4xl font-bold text-white mb-4">⚔️ Batalla Épica</h2>
       
-      <!-- Botón de música -->
-      <button id="battle-music-toggle" onclick="toggleBattleMusic()" class="bg-red-600 text-white px-6 py-3 rounded-lg hover:bg-red-700 transition">
-        🔊 Música de Batalla
-      </button>
+      <!-- Controles superiores -->
+      <div class="flex gap-4 mb-6">
+        <button id="battle-music-toggle" onclick="toggleBattleMusic()" class="bg-purple-600 text-white px-6 py-3 rounded-lg hover:bg-purple-700 transition">
+          🎵 Música de Batalla
+        </button>
+        <button onclick="restartBattle()" class="bg-orange-600 text-white px-6 py-3 rounded-lg hover:bg-orange-700 transition">
+          🔄 Reiniciar
+        </button>
+        <button onclick="endBattle()" class="bg-red-600 text-white px-6 py-3 rounded-lg hover:bg-red-700 transition">
+          🏁 Terminar Batalla
+        </button>
+      </div>
       
-      <div class="grid grid-cols-1 md:grid-cols-2 gap-8 w-full">
+      <!-- Equipos en columnas -->
+      <div class="grid grid-cols-1 lg:grid-cols-2 gap-8 w-full">
         <!-- Equipo de Héroes -->
-        <div class="bg-white bg-opacity-90 p-6 rounded-lg">
-          <h3 class="text-xl font-bold text-blue-600 mb-4">🦸 Héroes</h3>
+        <div class="bg-white bg-opacity-95 p-6 rounded-lg shadow-lg">
+          <h3 class="text-2xl font-bold text-blue-600 mb-6 text-center">🦸 Héroes</h3>
           <div id="battle-heroes" class="space-y-4"></div>
         </div>
         
         <!-- Equipo de Villanos -->
-        <div class="bg-white bg-opacity-90 p-6 rounded-lg">
-          <h3 class="text-xl font-bold text-red-600 mb-4">🦹 Villanos</h3>
+        <div class="bg-white bg-opacity-95 p-6 rounded-lg shadow-lg">
+          <h3 class="text-2xl font-bold text-red-600 mb-6 text-center">🦹 Villanos</h3>
           <div id="battle-villains" class="space-y-4"></div>
         </div>
       </div>
       
       <!-- Log de Batalla -->
-      <div class="bg-white bg-opacity-90 p-6 rounded-lg w-full">
+      <div class="bg-white bg-opacity-95 p-6 rounded-lg w-full shadow-lg">
         <h3 class="text-xl font-bold mb-4">📜 Log de Batalla</h3>
-        <div id="battle-log" class="h-64 overflow-y-auto bg-gray-100 p-4 rounded text-sm space-y-2"></div>
+        <div id="battle-log" class="h-48 overflow-y-auto bg-gray-100 p-4 rounded text-sm space-y-2"></div>
       </div>
       
-      <!-- Controles de Batalla -->
-      <div class="flex gap-4">
-        <button onclick="startBattleRound()" class="bg-green-600 text-white px-6 py-2 rounded hover:bg-green-700 transition">
-          ⚔️ Iniciar Ronda
-        </button>
-        <button onclick="endBattle()" class="bg-red-600 text-white px-6 py-2 rounded hover:bg-red-700 transition">
-          🏁 Terminar Batalla
-        </button>
-        <button onclick="showCharacterSelection()" class="bg-blue-600 text-white px-6 py-2 rounded hover:bg-blue-700 transition">
-          🔄 Nueva Batalla
-        </button>
+      <!-- Instrucciones de teclado -->
+      <div class="bg-blue-50 p-4 rounded-lg text-sm">
+        <h4 class="font-bold mb-2">⌨️ Controles por teclado:</h4>
+        <div class="grid grid-cols-2 gap-4">
+          <div>
+            <div><strong>G + H:</strong> Golpe del héroe activo</div>
+            <div><strong>G + V:</strong> Golpe del villano activo</div>
+          </div>
+          <div>
+            <div><strong>E + H:</strong> Ataque especial del héroe</div>
+            <div><strong>E + V:</strong> Ataque especial del villano</div>
+          </div>
+        </div>
       </div>
     </div>
   `;
@@ -1378,9 +1389,12 @@ function renderBattleScreen() {
   
   // Inicializar estado de batalla
   initializeBattleState();
+  
+  // Configurar controles de teclado
+  setupKeyboardControls();
 }
 
-// Cargar personajes de batalla
+// Cargar personajes de batalla con nuevo diseño
 function loadBattleCharacters() {
   const battleHeroes = JSON.parse(localStorage.getItem('battleHeroes') || '[]');
   const battleVillains = JSON.parse(localStorage.getItem('battleVillains') || '[]');
@@ -1391,17 +1405,69 @@ function loadBattleCharacters() {
   const villainsContainer = document.getElementById('battle-villains');
   
   if (heroesContainer) {
-    heroesContainer.innerHTML = battleHeroes.map(heroId => {
+    heroesContainer.innerHTML = battleHeroes.map((heroId, index) => {
       const hero = allHeroes.find(h => h.heroId === heroId);
       if (!hero) return '';
       
       return `
-        <div class="flex items-center space-x-4 p-4 bg-blue-50 rounded-lg">
-          ${createImageElement(getImageWithFallback(hero.image, hero.name, 'hero'), hero.name, 'w-16 h-16 object-cover rounded-full')}
-          <div>
-            <div class="font-bold">${hero.name}</div>
-            <div class="text-sm text-gray-600">${hero.alias}</div>
-            <div class="text-xs text-gray-500">${hero.city} - ${hero.team}</div>
+        <div class="battle-character bg-blue-50 rounded-lg p-4 border-2 ${index === 0 ? 'border-blue-500' : 'border-gray-300'}" data-character-id="${hero.heroId}" data-team="hero" data-index="${index}">
+          <div class="flex items-center space-x-4">
+            ${createImageElement(getImageWithFallback(hero.image, hero.name, 'hero'), hero.name, 'w-20 h-20 object-cover rounded-full border-2 border-blue-300')}
+            <div class="flex-1">
+              <div class="font-bold text-lg">${hero.name}</div>
+              <div class="text-sm text-gray-600">${hero.alias}</div>
+              <div class="text-xs text-gray-500">${hero.city}</div>
+              
+              <!-- Barras de estado -->
+              <div class="mt-3 space-y-2">
+                <!-- Barra de Poder -->
+                <div>
+                  <div class="flex justify-between text-xs">
+                    <span>Poder</span>
+                    <span id="hero-power-${index}">0%</span>
+                  </div>
+                  <div class="w-full bg-gray-200 rounded-full h-2">
+                    <div id="hero-power-bar-${index}" class="bg-yellow-500 h-2 rounded-full transition-all duration-300" style="width: 0%"></div>
+                  </div>
+                </div>
+                
+                <!-- Barra de Escudo -->
+                <div>
+                  <div class="flex justify-between text-xs">
+                    <span>Escudo</span>
+                    <span id="hero-shield-${index}">100</span>
+                  </div>
+                  <div class="w-full bg-gray-200 rounded-full h-2">
+                    <div id="hero-shield-bar-${index}" class="bg-blue-500 h-2 rounded-full transition-all duration-300" style="width: 100%"></div>
+                  </div>
+                </div>
+                
+                <!-- Barra de Vida -->
+                <div>
+                  <div class="flex justify-between text-xs">
+                    <span>Vida</span>
+                    <span id="hero-health-${index}">200</span>
+                  </div>
+                  <div class="w-full bg-gray-200 rounded-full h-2">
+                    <div id="hero-health-bar-${index}" class="bg-green-500 h-2 rounded-full transition-all duration-300" style="width: 100%"></div>
+                  </div>
+                </div>
+              </div>
+              
+              <!-- Botones de acción -->
+              <div class="mt-3 flex gap-2">
+                <button onclick="performAttack('hero', ${index}, 'normal')" 
+                        class="hero-action-btn bg-blue-600 text-white px-3 py-1 rounded text-sm hover:bg-blue-700 transition ${index !== 0 ? 'opacity-50 cursor-not-allowed' : ''}"
+                        ${index !== 0 ? 'disabled' : ''}>
+                  ⚔️ Golpe
+                </button>
+                <button onclick="performAttack('hero', ${index}, 'special')" 
+                        class="hero-special-btn bg-purple-600 text-white px-3 py-1 rounded text-sm hover:bg-purple-700 transition ${index !== 0 ? 'opacity-50 cursor-not-allowed' : ''}"
+                        ${index !== 0 ? 'disabled' : ''}>
+                  🔥 Especial
+                </button>
+              </div>
+            </div>
           </div>
         </div>
       `;
@@ -1409,17 +1475,69 @@ function loadBattleCharacters() {
   }
   
   if (villainsContainer) {
-    villainsContainer.innerHTML = battleVillains.map(villainId => {
+    villainsContainer.innerHTML = battleVillains.map((villainId, index) => {
       const villain = allVillains.find(v => v.villainId === villainId);
       if (!villain) return '';
       
       return `
-        <div class="flex items-center space-x-4 p-4 bg-red-50 rounded-lg">
-          ${createImageElement(getImageWithFallback(villain.image, villain.name, 'villain'), villain.name, 'w-16 h-16 object-cover rounded-full')}
-          <div>
-            <div class="font-bold">${villain.name}</div>
-            <div class="text-sm text-gray-600">${villain.alias}</div>
-            <div class="text-xs text-gray-500">${villain.city} - ${villain.team}</div>
+        <div class="battle-character bg-red-50 rounded-lg p-4 border-2 ${index === 0 ? 'border-red-500' : 'border-gray-300'}" data-character-id="${villain.villainId}" data-team="villain" data-index="${index}">
+          <div class="flex items-center space-x-4">
+            ${createImageElement(getImageWithFallback(villain.image, villain.name, 'villain'), villain.name, 'w-20 h-20 object-cover rounded-full border-2 border-red-300')}
+            <div class="flex-1">
+              <div class="font-bold text-lg">${villain.name}</div>
+              <div class="text-sm text-gray-600">${villain.alias}</div>
+              <div class="text-xs text-gray-500">${villain.city}</div>
+              
+              <!-- Barras de estado -->
+              <div class="mt-3 space-y-2">
+                <!-- Barra de Poder -->
+                <div>
+                  <div class="flex justify-between text-xs">
+                    <span>Poder</span>
+                    <span id="villain-power-${index}">0%</span>
+                  </div>
+                  <div class="w-full bg-gray-200 rounded-full h-2">
+                    <div id="villain-power-bar-${index}" class="bg-yellow-500 h-2 rounded-full transition-all duration-300" style="width: 0%"></div>
+                  </div>
+                </div>
+                
+                <!-- Barra de Escudo -->
+                <div>
+                  <div class="flex justify-between text-xs">
+                    <span>Escudo</span>
+                    <span id="villain-shield-${index}">100</span>
+                  </div>
+                  <div class="w-full bg-gray-200 rounded-full h-2">
+                    <div id="villain-shield-bar-${index}" class="bg-blue-500 h-2 rounded-full transition-all duration-300" style="width: 100%"></div>
+                  </div>
+                </div>
+                
+                <!-- Barra de Vida -->
+                <div>
+                  <div class="flex justify-between text-xs">
+                    <span>Vida</span>
+                    <span id="villain-health-${index}">200</span>
+                  </div>
+                  <div class="w-full bg-gray-200 rounded-full h-2">
+                    <div id="villain-health-bar-${index}" class="bg-green-500 h-2 rounded-full transition-all duration-300" style="width: 100%"></div>
+                  </div>
+                </div>
+              </div>
+              
+              <!-- Botones de acción -->
+              <div class="mt-3 flex gap-2">
+                <button onclick="performAttack('villain', ${index}, 'normal')" 
+                        class="villain-action-btn bg-red-600 text-white px-3 py-1 rounded text-sm hover:bg-red-700 transition ${index !== 0 ? 'opacity-50 cursor-not-allowed' : ''}"
+                        ${index !== 0 ? 'disabled' : ''}>
+                  ⚔️ Golpe
+                </button>
+                <button onclick="performAttack('villain', ${index}, 'special')" 
+                        class="villain-special-btn bg-purple-600 text-white px-3 py-1 rounded text-sm hover:bg-purple-700 transition ${index !== 0 ? 'opacity-50 cursor-not-allowed' : ''}"
+                        ${index !== 0 ? 'disabled' : ''}>
+                  🔥 Especial
+                </button>
+              </div>
+            </div>
           </div>
         </div>
       `;
@@ -1427,15 +1545,16 @@ function loadBattleCharacters() {
   }
 }
 
-// Estado de batalla
+// Estado de batalla mejorado
 let battleState = {
   round: 0,
   heroes: [],
   villains: [],
-  log: []
+  log: [],
+  isActive: false
 };
 
-// Inicializar estado de batalla
+// Inicializar estado de batalla con nuevas reglas
 function initializeBattleState() {
   const battleHeroes = JSON.parse(localStorage.getItem('battleHeroes') || '[]');
   const battleVillains = JSON.parse(localStorage.getItem('battleVillains') || '[]');
@@ -1448,164 +1567,301 @@ function initializeBattleState() {
       const hero = allHeroes.find(h => h.heroId === heroId);
       return {
         ...hero,
-        health: 100,
-        isAlive: true
+        health: 200,
+        shield: 100,
+        power: 0,
+        isAlive: true,
+        isActive: false
       };
     }),
     villains: battleVillains.map(villainId => {
       const villain = allVillains.find(v => v.villainId === villainId);
       return {
         ...villain,
-        health: 100,
-        isAlive: true
+        health: 200,
+        shield: 100,
+        power: 0,
+        isAlive: true,
+        isActive: false
       };
     }),
-    log: []
+    log: [],
+    isActive: true
   };
   
-  addBattleLog('🎮 Batalla iniciada! Los héroes se enfrentan a los villanos...');
+  // Activar primer personaje de cada equipo
+  if (battleState.heroes.length > 0) {
+    battleState.heroes[0].isActive = true;
+  }
+  if (battleState.villains.length > 0) {
+    battleState.villains[0].isActive = true;
+  }
+  
+  // Reproducir música de batalla
+  playBattleMusic();
+  
+  // Actualizar interfaz
+  updateBattleInterface();
+  
+  addBattleLog('⚔️ ¡La batalla ha comenzado!');
 }
 
-// Agregar entrada al log de batalla
-function addBattleLog(message) {
-  battleState.log.push({
-    message,
-    timestamp: new Date().toLocaleTimeString()
+// Función para realizar ataques
+function performAttack(team, characterIndex, attackType) {
+  if (!battleState.isActive) return;
+  
+  const character = team === 'hero' ? battleState.heroes[characterIndex] : battleState.villains[characterIndex];
+  const targetTeam = team === 'hero' ? battleState.villains : battleState.heroes;
+  
+  // Verificar que el personaje esté activo
+  if (!character.isActive || !character.isAlive) {
+    addBattleLog(`❌ ${character.name} no puede atacar en este momento`);
+    return;
+  }
+  
+  // Encontrar el primer enemigo vivo
+  const target = targetTeam.find(c => c.isAlive);
+  if (!target) {
+    addBattleLog('❌ No hay enemigos disponibles para atacar');
+    return;
+  }
+  
+  let damage = 0;
+  let isCritical = false;
+  let isSpecial = false;
+  
+  if (attackType === 'normal') {
+    // Ataque normal: 15 de daño base, posibilidad de crítico (40)
+    damage = 15;
+    isCritical = Math.random() < 0.2; // 20% de probabilidad de crítico
+    if (isCritical) {
+      damage = 40;
+    }
+  } else if (attackType === 'special') {
+    // Ataque especial: solo si poder = 100
+    if (character.power < 100) {
+      addBattleLog(`❌ ${character.name} necesita 100% de poder para usar ataque especial`);
+      return;
+    }
+    damage = 60;
+    isSpecial = true;
+    character.power = 0; // Resetear poder después del ataque especial
+  }
+  
+  // Aplicar daño (primero al escudo, luego a la vida)
+  let remainingDamage = damage;
+  
+  if (target.shield > 0) {
+    if (remainingDamage <= target.shield) {
+      target.shield -= remainingDamage;
+      remainingDamage = 0;
+    } else {
+      remainingDamage -= target.shield;
+      target.shield = 0;
+    }
+  }
+  
+  if (remainingDamage > 0) {
+    target.health = Math.max(0, target.health - remainingDamage);
+  }
+  
+  // Verificar si el objetivo fue derrotado
+  if (target.health <= 0) {
+    target.isAlive = false;
+    addBattleLog(`💀 ${character.name} derrota a ${target.name} con ${damage} de daño!`);
+    
+    // Activar siguiente personaje del equipo derrotado
+    activateNextCharacter(team === 'hero' ? 'villain' : 'hero');
+    
+    // Verificar fin de batalla
+    checkBattleEnd();
+  } else {
+    const attackTypeText = isSpecial ? '🔥 ATAQUE ESPECIAL' : (isCritical ? '💥 GOLPE CRÍTICO' : '⚔️ Golpe normal');
+    addBattleLog(`${attackTypeText}: ${character.name} ataca a ${target.name} causando ${damage} de daño! (Escudo: ${target.shield}, Vida: ${target.health})`);
+  }
+  
+  // Llenar barra de poder del atacante
+  character.power = Math.min(100, character.power + 25);
+  
+  // Mostrar animación especial si es ataque especial
+  if (isSpecial && character.specialAttackAnimationUrl && character.specialAttackAnimationUrl.trim() !== '') {
+    showDynamicSpecialAnimation(character.specialAttackAnimationUrl, character.name, '¡Ataque Especial!');
+  }
+  
+  // Actualizar interfaz
+  updateBattleInterface();
+}
+
+// Activar siguiente personaje del equipo
+function activateNextCharacter(team) {
+  const characters = team === 'hero' ? battleState.heroes : battleState.villains;
+  
+  // Desactivar todos
+  characters.forEach(c => c.isActive = false);
+  
+  // Activar el siguiente vivo
+  const nextAlive = characters.find(c => c.isAlive);
+  if (nextAlive) {
+    nextAlive.isActive = true;
+    addBattleLog(`🔄 ${nextAlive.name} entra al combate!`);
+  }
+}
+
+// Actualizar interfaz de batalla
+function updateBattleInterface() {
+  // Actualizar héroes
+  battleState.heroes.forEach((hero, index) => {
+    const powerElement = document.getElementById(`hero-power-${index}`);
+    const powerBarElement = document.getElementById(`hero-power-bar-${index}`);
+    const shieldElement = document.getElementById(`hero-shield-${index}`);
+    const shieldBarElement = document.getElementById(`hero-shield-bar-${index}`);
+    const healthElement = document.getElementById(`hero-health-${index}`);
+    const healthBarElement = document.getElementById(`hero-health-bar-${index}`);
+    const characterElement = document.querySelector(`[data-team="hero"][data-index="${index}"]`);
+    
+    if (powerElement) powerElement.textContent = `${hero.power}%`;
+    if (powerBarElement) powerBarElement.style.width = `${hero.power}%`;
+    if (shieldElement) shieldElement.textContent = hero.shield;
+    if (shieldBarElement) shieldBarElement.style.width = `${(hero.shield / 100) * 100}%`;
+    if (healthElement) healthElement.textContent = hero.health;
+    if (healthBarElement) healthBarElement.style.width = `${(hero.health / 200) * 100}%`;
+    
+    // Actualizar estado visual
+    if (characterElement) {
+      if (!hero.isAlive) {
+        characterElement.classList.add('opacity-50', 'grayscale');
+        characterElement.classList.remove('border-blue-500');
+      } else if (hero.isActive) {
+        characterElement.classList.remove('opacity-50', 'grayscale');
+        characterElement.classList.add('border-blue-500');
+      } else {
+        characterElement.classList.remove('opacity-50', 'grayscale', 'border-blue-500');
+        characterElement.classList.add('border-gray-300');
+      }
+    }
+    
+    // Actualizar botones
+    const actionBtns = characterElement?.querySelectorAll('.hero-action-btn, .hero-special-btn');
+    if (actionBtns) {
+      actionBtns.forEach(btn => {
+        if (!hero.isAlive || !hero.isActive) {
+          btn.disabled = true;
+          btn.classList.add('opacity-50', 'cursor-not-allowed');
+        } else {
+          btn.disabled = false;
+          btn.classList.remove('opacity-50', 'cursor-not-allowed');
+        }
+      });
+    }
   });
   
-  const logContainer = document.getElementById('battle-log');
-  if (logContainer) {
-    logContainer.innerHTML = battleState.log.map(entry => 
-      `<div class="text-gray-700"><span class="text-gray-500">[${entry.timestamp}]</span> ${entry.message}</div>`
-    ).join('');
-    logContainer.scrollTop = logContainer.scrollHeight;
+  // Actualizar villanos
+  battleState.villains.forEach((villain, index) => {
+    const powerElement = document.getElementById(`villain-power-${index}`);
+    const powerBarElement = document.getElementById(`villain-power-bar-${index}`);
+    const shieldElement = document.getElementById(`villain-shield-${index}`);
+    const shieldBarElement = document.getElementById(`villain-shield-bar-${index}`);
+    const healthElement = document.getElementById(`villain-health-${index}`);
+    const healthBarElement = document.getElementById(`villain-health-bar-${index}`);
+    const characterElement = document.querySelector(`[data-team="villain"][data-index="${index}"]`);
+    
+    if (powerElement) powerElement.textContent = `${villain.power}%`;
+    if (powerBarElement) powerBarElement.style.width = `${villain.power}%`;
+    if (shieldElement) shieldElement.textContent = villain.shield;
+    if (shieldBarElement) shieldBarElement.style.width = `${(villain.shield / 100) * 100}%`;
+    if (healthElement) healthElement.textContent = villain.health;
+    if (healthBarElement) healthBarElement.style.width = `${(villain.health / 200) * 100}%`;
+    
+    // Actualizar estado visual
+    if (characterElement) {
+      if (!villain.isAlive) {
+        characterElement.classList.add('opacity-50', 'grayscale');
+        characterElement.classList.remove('border-red-500');
+      } else if (villain.isActive) {
+        characterElement.classList.remove('opacity-50', 'grayscale');
+        characterElement.classList.add('border-red-500');
+      } else {
+        characterElement.classList.remove('opacity-50', 'grayscale', 'border-red-500');
+        characterElement.classList.add('border-gray-300');
+      }
+    }
+    
+    // Actualizar botones
+    const actionBtns = characterElement?.querySelectorAll('.villain-action-btn, .villain-special-btn');
+    if (actionBtns) {
+      actionBtns.forEach(btn => {
+        if (!villain.isAlive || !villain.isActive) {
+          btn.disabled = true;
+          btn.classList.add('opacity-50', 'cursor-not-allowed');
+        } else {
+          btn.disabled = false;
+          btn.classList.remove('opacity-50', 'cursor-not-allowed');
+        }
+      });
+    }
+  });
+}
+
+// Configurar controles de teclado
+function setupKeyboardControls() {
+  document.addEventListener('keydown', function(event) {
+    if (!battleState.isActive) return;
+    
+    const key = event.key.toLowerCase();
+    
+    // Verificar combinaciones de teclas
+    if (event.ctrlKey || event.altKey || event.metaKey) return; // Ignorar combinaciones con teclas modificadoras
+    
+    if (key === 'g') {
+      // Golpes
+      setTimeout(() => {
+        const nextKey = event.key.toLowerCase();
+        if (nextKey === 'h') {
+          // Golpe del héroe activo
+          const activeHero = battleState.heroes.find(h => h.isActive && h.isAlive);
+          if (activeHero) {
+            const heroIndex = battleState.heroes.indexOf(activeHero);
+            performAttack('hero', heroIndex, 'normal');
+          }
+        } else if (nextKey === 'v') {
+          // Golpe del villano activo
+          const activeVillain = battleState.villains.find(v => v.isActive && v.isAlive);
+          if (activeVillain) {
+            const villainIndex = battleState.villains.indexOf(activeVillain);
+            performAttack('villain', villainIndex, 'normal');
+          }
+        }
+      }, 100);
+    } else if (key === 'e') {
+      // Ataques especiales
+      setTimeout(() => {
+        const nextKey = event.key.toLowerCase();
+        if (nextKey === 'h') {
+          // Ataque especial del héroe activo
+          const activeHero = battleState.heroes.find(h => h.isActive && h.isAlive);
+          if (activeHero) {
+            const heroIndex = battleState.heroes.indexOf(activeHero);
+            performAttack('hero', heroIndex, 'special');
+          }
+        } else if (nextKey === 'v') {
+          // Ataque especial del villano activo
+          const activeVillain = battleState.villains.find(v => v.isActive && v.isAlive);
+          if (activeVillain) {
+            const villainIndex = battleState.villains.indexOf(activeVillain);
+            performAttack('villain', villainIndex, 'special');
+          }
+        }
+      }, 100);
+    }
+  });
+}
+
+// Reiniciar batalla
+function restartBattle() {
+  if (confirm('¿Estás seguro de que quieres reiniciar la batalla?')) {
+    initializeBattleState();
+    addBattleLog('🔄 Batalla reiniciada');
   }
-}
-
-// Iniciar ronda de batalla
-function startBattleRound() {
-  battleState.round++;
-  addBattleLog(`⚔️ Ronda ${battleState.round} iniciada!`);
-  
-  // Simular ataques
-  setTimeout(() => {
-    heroAttack();
-  }, 1000);
-  
-  setTimeout(() => {
-    villainAttack();
-  }, 2000);
-  
-  setTimeout(() => {
-    checkBattleEnd();
-  }, 3000);
-}
-
-// Ataque de héroe
-function heroAttack() {
-  const aliveHeroes = battleState.heroes.filter(h => h.isAlive);
-  const aliveVillains = battleState.villains.filter(v => v.isAlive);
-  
-  if (aliveHeroes.length === 0 || aliveVillains.length === 0) return;
-  
-  const hero = aliveHeroes[Math.floor(Math.random() * aliveHeroes.length)];
-  const villain = aliveVillains[Math.floor(Math.random() * aliveVillains.length)];
-  
-  const damage = Math.floor(Math.random() * 30) + 10;
-  villain.health = Math.max(0, villain.health - damage);
-  
-  // Determinar si es un ataque especial (20% de probabilidad)
-  const isSpecialAttack = Math.random() < 0.2;
-  
-  if (villain.health <= 0) {
-    villain.isAlive = false;
-    addBattleLog(`💥 ${hero.name} derrota a ${villain.name} con ${damage} de daño!`);
-    
-    // Mostrar animación especial si existe y es un ataque especial
-    if (isSpecialAttack && hero.specialAttackAnimationUrl && hero.specialAttackAnimationUrl.trim() !== '') {
-      showDynamicSpecialAnimation(hero.specialAttackAnimationUrl, hero.name, '¡Ataque Especial!');
-    }
-  } else {
-    const attackType = isSpecialAttack ? '🔥 ATAQUE ESPECIAL' : '⚔️ Ataque normal';
-    addBattleLog(`${attackType}: ${hero.name} ataca a ${villain.name} causando ${damage} de daño! (${villain.health} HP restantes)`);
-    
-    // Mostrar animación especial si es un ataque especial
-    if (isSpecialAttack && hero.specialAttackAnimationUrl && hero.specialAttackAnimationUrl.trim() !== '') {
-      showDynamicSpecialAnimation(hero.specialAttackAnimationUrl, hero.name, '¡Ataque Especial!');
-    }
-  }
-}
-
-// Ataque de villano
-function villainAttack() {
-  const aliveHeroes = battleState.heroes.filter(h => h.isAlive);
-  const aliveVillains = battleState.villains.filter(v => v.isAlive);
-  
-  if (aliveHeroes.length === 0 || aliveVillains.length === 0) return;
-  
-  const villain = aliveVillains[Math.floor(Math.random() * aliveVillains.length)];
-  const hero = aliveHeroes[Math.floor(Math.random() * aliveHeroes.length)];
-  
-  const damage = Math.floor(Math.random() * 30) + 10;
-  hero.health = Math.max(0, hero.health - damage);
-  
-  // Determinar si es un ataque especial (20% de probabilidad)
-  const isSpecialAttack = Math.random() < 0.2;
-  
-  if (hero.health <= 0) {
-    hero.isAlive = false;
-    addBattleLog(`💀 ${villain.name} derrota a ${hero.name} con ${damage} de daño!`);
-    
-    // Mostrar animación especial si existe y es un ataque especial
-    if (isSpecialAttack && villain.specialAttackAnimationUrl && villain.specialAttackAnimationUrl.trim() !== '') {
-      showDynamicSpecialAnimation(villain.specialAttackAnimationUrl, villain.name, '¡Ataque Especial!');
-    }
-  } else {
-    const attackType = isSpecialAttack ? '🔥 ATAQUE ESPECIAL' : '⚔️ Ataque normal';
-    addBattleLog(`${attackType}: ${villain.name} ataca a ${hero.name} causando ${damage} de daño! (${hero.health} HP restantes)`);
-    
-    // Mostrar animación especial si es un ataque especial
-    if (isSpecialAttack && villain.specialAttackAnimationUrl && villain.specialAttackAnimationUrl.trim() !== '') {
-      showDynamicSpecialAnimation(villain.specialAttackAnimationUrl, villain.name, '¡Ataque Especial!');
-    }
-  }
-}
-
-// Mostrar animación especial mejorada
-function showDynamicSpecialAnimation(animationUrl, characterName, attackType = '¡Ataque Especial!') {
-  if (!animationUrl || animationUrl.trim() === '') return;
-  
-  // Crear overlay para la animación
-  const overlay = document.createElement('div');
-  overlay.className = 'fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center z-50';
-  overlay.innerHTML = `
-    <div class="bg-white p-6 rounded-lg max-w-md mx-4">
-      <div class="text-center mb-4">
-        <h3 class="text-xl font-bold text-red-600 mb-2">${attackType}</h3>
-        <p class="text-lg font-semibold">🎭 ${characterName}</p>
-      </div>
-      <div class="bg-gray-100 rounded-lg p-4 mb-4">
-        <img src="${animationUrl}" alt="Animación especial de ${characterName}" 
-             class="w-full h-48 object-cover rounded" 
-             onerror="this.style.display='none'; this.parentElement.innerHTML='<div class=\'text-center text-gray-500 py-8\'>🎭 Animación especial de ${characterName}</div>'">
-      </div>
-      <div class="flex justify-center">
-        <button onclick="this.parentElement.parentElement.parentElement.remove()" 
-                class="bg-blue-600 text-white px-6 py-2 rounded hover:bg-blue-700 transition">
-          Cerrar
-        </button>
-      </div>
-    </div>
-  `;
-  
-  document.body.appendChild(overlay);
-  
-  // Auto-cerrar después de 4 segundos
-  setTimeout(() => {
-    if (overlay.parentNode) {
-      overlay.remove();
-    }
-  }, 4000);
 }
 
 // Verificar fin de batalla
@@ -1613,33 +1869,24 @@ function checkBattleEnd() {
   const aliveHeroes = battleState.heroes.filter(h => h.isAlive);
   const aliveVillains = battleState.villains.filter(v => v.isAlive);
   
-  if (aliveHeroes.length === 0 && aliveVillains.length === 0) {
-    addBattleLog('🤝 ¡Empate! Ambos equipos han sido derrotados.');
-    endBattle();
-  } else if (aliveHeroes.length === 0) {
-    addBattleLog('🦹 ¡Los villanos han ganado la batalla!');
+  if (aliveHeroes.length === 0) {
+    addBattleLog('🏆 ¡Los Villanos han ganado la batalla!');
     endBattle();
   } else if (aliveVillains.length === 0) {
-    addBattleLog('🦸 ¡Los héroes han ganado la batalla!');
+    addBattleLog('🏆 ¡Los Héroes han ganado la batalla!');
     endBattle();
-  } else {
-    addBattleLog(`📊 Estado: ${aliveHeroes.length} héroes vs ${aliveVillains.length} villanos restantes`);
   }
 }
 
 // Terminar batalla
 function endBattle() {
-  addBattleLog('🏁 Batalla terminada!');
+  battleState.isActive = false;
+  stopMusic();
+  addBattleLog('🏁 Batalla terminada');
   
-  // Cambiar a música de lobby
-  if (currentMusicType === 'battle') {
-    stopMusic();
-    setTimeout(() => {
-      if (lobbyMusicFile) {
-        playLobbyMusic();
-      }
-    }, 1000);
-  }
+  setTimeout(() => {
+    showCharacterSelection();
+  }, 2000);
 }
 
 // Renderizar panel de administración
@@ -2237,4 +2484,57 @@ document.addEventListener('DOMContentLoaded', () => {
   setTimeout(() => {
     initializeMusic();
   }, 500);
-}); 
+});
+
+// Agregar entrada al log de batalla
+function addBattleLog(message) {
+  battleState.log.push({
+    message,
+    timestamp: new Date().toLocaleTimeString()
+  });
+  
+  const logContainer = document.getElementById('battle-log');
+  if (logContainer) {
+    logContainer.innerHTML = battleState.log.map(entry => 
+      `<div class="text-gray-700"><span class="text-gray-500">[${entry.timestamp}]</span> ${entry.message}</div>`
+    ).join('');
+    logContainer.scrollTop = logContainer.scrollHeight;
+  }
+}
+
+// Mostrar animación especial mejorada
+function showDynamicSpecialAnimation(animationUrl, characterName, attackType = '¡Ataque Especial!') {
+  if (!animationUrl || animationUrl.trim() === '') return;
+  
+  // Crear overlay para la animación
+  const overlay = document.createElement('div');
+  overlay.className = 'fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center z-50';
+  overlay.innerHTML = `
+    <div class="bg-white p-6 rounded-lg max-w-md mx-4">
+      <div class="text-center mb-4">
+        <h3 class="text-xl font-bold text-red-600 mb-2">${attackType}</h3>
+        <p class="text-lg font-semibold">🎭 ${characterName}</p>
+      </div>
+      <div class="bg-gray-100 rounded-lg p-4 mb-4">
+        <img src="${animationUrl}" alt="Animación especial de ${characterName}" 
+             class="w-full h-48 object-cover rounded" 
+             onerror="this.style.display='none'; this.parentElement.innerHTML='<div class=\'text-center text-gray-500 py-8\'>🎭 Animación especial de ${characterName}</div>'">
+      </div>
+      <div class="flex justify-center">
+        <button onclick="this.parentElement.parentElement.parentElement.remove()" 
+                class="bg-blue-600 text-white px-6 py-2 rounded hover:bg-blue-700 transition">
+          Cerrar
+        </button>
+      </div>
+    </div>
+  `;
+  
+  document.body.appendChild(overlay);
+  
+  // Auto-cerrar después de 4 segundos
+  setTimeout(() => {
+    if (overlay.parentNode) {
+      overlay.remove();
+    }
+  }, 4000);
+} 
