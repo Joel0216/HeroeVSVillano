@@ -7,9 +7,11 @@
   <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
   <style>
     body, html {
-      height: 100%;
+      min-height: 100%;
       margin: 0;
       padding: 0;
+      overflow-x: auto;
+      overflow-y: auto;
     }
     #background {
       position: fixed;
@@ -292,11 +294,30 @@
       50% { transform: translateY(-20px) scaleY(1); opacity: 1; }
       100% { transform: translateY(-40px) scaleY(0); opacity: 0; }
     }
+    
+    /* Animación personalizada */
+    .custom-animation {
+      width: 400px;
+      height: 300px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: rgba(0, 0, 0, 0.9);
+      border-radius: 20px;
+      box-shadow: 0 0 50px rgba(255, 255, 255, 0.3);
+      animation: customGlow 3s ease-in-out;
+    }
+    
+    @keyframes customGlow {
+      0% { box-shadow: 0 0 20px rgba(255, 255, 255, 0.3); }
+      50% { box-shadow: 0 0 50px rgba(255, 255, 255, 0.8); }
+      100% { box-shadow: 0 0 20px rgba(255, 255, 255, 0.3); }
+    }
   </style>
 </head>
 <body class="h-full w-full flex flex-col items-center justify-center bg-gray-900">
   <div id="background"></div>
-  <div id="main-content" class="w-full h-full flex flex-col items-center justify-center">
+  <div id="main-content" class="w-full min-h-full flex flex-col items-center justify-center">
     <!-- Landing Page -->
     <div id="landing" class="flex flex-col items-center justify-center space-y-6">
       <h1 class="text-4xl md:text-6xl font-extrabold text-white drop-shadow-lg mb-8">DATAFIGHT</h1>

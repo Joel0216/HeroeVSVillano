@@ -23,6 +23,7 @@ const initializeData = () => {
         city: 'Malibu',
         team: 'Los Vengadores',
         image: 'https://mediaproxy.tvtropes.org/width/1200/https://static.tvtropes.org/pmwiki/pub/images/invincible_iron_man_vol_3_1_fried_pie_exclusive_variant_textless.jpg',
+        specialAttackAnimationUrl: 'https://media.giphy.com/media/3o7abKhOpu0NwenH3O/giphy.gif',
         createdBy: 'ADMIN_001',
         createdAt: new Date().toISOString()
       },
@@ -33,6 +34,7 @@ const initializeData = () => {
         city: 'Nueva York',
         team: 'Los Vengadores',
         image: 'https://i.etsystatic.com/42415510/r/il',
+        specialAttackAnimationUrl: 'https://media.giphy.com/media/3o7abKhOpu0NwenH3O/giphy.gif',
         createdBy: 'ADMIN_001',
         createdAt: new Date().toISOString()
       },
@@ -42,7 +44,8 @@ const initializeData = () => {
         alias: 'Captain America',
         city: 'Brooklyn',
         team: 'Los Vengadores',
-        image: 'https://via.placeholder.com/100x100?text=CA',
+        image: '', // Imagen local por defecto
+        specialAttackAnimationUrl: '',
         createdBy: 'ADMIN_001',
         createdAt: new Date().toISOString()
       }
@@ -57,7 +60,8 @@ const initializeData = () => {
         alias: 'The Mad Titan',
         city: 'Titan',
         team: 'Los Black Order',
-        image: 'https://via.placeholder.com/100x100?text=Thanos',
+        image: '', // Imagen local por defecto
+        specialAttackAnimationUrl: 'https://media.giphy.com/media/3o7abKhOpu0NwenH3O/giphy.gif',
         createdBy: 'ADMIN_001',
         createdAt: new Date().toISOString()
       },
@@ -67,7 +71,8 @@ const initializeData = () => {
         alias: 'Loki Laufeyson',
         city: 'Asgard',
         team: 'Independiente',
-        image: 'https://via.placeholder.com/100x100?text=Loki',
+        image: '', // Imagen local por defecto
+        specialAttackAnimationUrl: '',
         createdBy: 'ADMIN_001',
         createdAt: new Date().toISOString()
       },
@@ -77,7 +82,8 @@ const initializeData = () => {
         alias: 'Venom',
         city: 'San Francisco',
         team: 'Independiente',
-        image: 'https://via.placeholder.com/100x100?text=Venom',
+        image: '', // Imagen local por defecto
+        specialAttackAnimationUrl: 'https://media.giphy.com/media/3o7abKhOpu0NwenH3O/giphy.gif',
         createdBy: 'ADMIN_001',
         createdAt: new Date().toISOString()
       }
@@ -87,6 +93,34 @@ const initializeData = () => {
 
 // Inicializar datos al cargar
 initializeData();
+
+// Función helper para manejar imágenes con fallback
+function getImageWithFallback(imageUrl, characterName, characterType = 'hero') {
+  if (!imageUrl || imageUrl.trim() === '') {
+    // Usar imagen local por defecto
+    return `data:image/svg+xml;base64,${btoa(`
+      <svg width="100" height="100" xmlns="http://www.w3.org/2000/svg">
+        <rect width="100" height="100" fill="${characterType === 'hero' ? '#3b82f6' : '#ef4444'}"/>
+        <text x="50" y="50" font-family="Arial" font-size="12" fill="white" text-anchor="middle" dy=".3em">${characterName}</text>
+      </svg>
+    `)}`;
+  }
+  
+  // Si hay URL, devolver con manejo de error
+  return imageUrl;
+}
+
+// Función para crear elemento img con manejo de errores
+function createImageElement(imageUrl, altText, className = '') {
+  const fallbackImage = `data:image/svg+xml;base64,${btoa(`
+    <svg width="100" height="100" xmlns="http://www.w3.org/2000/svg">
+      <rect width="100" height="100" fill="#6b7280"/>
+      <text x="50" y="50" font-family="Arial" font-size="12" fill="white" text-anchor="middle" dy=".3em">Sin imagen</text>
+    </svg>
+  `)}`;
+  
+  return `<img src="${imageUrl}" alt="${altText}" class="${className}" onerror="this.src='${fallbackImage}'">`;
+}
 
 // Función para mostrar mensajes
 function showMessage(message, type = 'info') {
@@ -113,12 +147,34 @@ const characterSelection = document.getElementById('character-selection');
 const teamsConfirmed = document.getElementById('teams-confirmed');
 const battleScreen = document.getElementById('battle-screen');
 
+// Variables globales para música
+let lobbyMusicFile = null;
+let battleMusicFile = null;
+let currentAudio = null;
+let currentMusicType = null;
+let musicInitialized = false;
+let isMusicEnabled = true;
+
 // Navegación básica
 function showScreen(screen) {
   [landing, auth, adminPanel, characterSelection, teamsConfirmed, battleScreen].forEach(div => {
     if (div) div.classList.add('hidden');
   });
   if (screen) screen.classList.remove('hidden');
+  
+  // Inicializar música si no se ha hecho antes
+  if (!musicInitialized) {
+    initializeMusic();
+  }
+  
+  // Reproducir música de lobby automáticamente en pantallas de lobby
+  if (screen === landing || screen === adminPanel || screen === characterSelection) {
+    if (currentMusicType !== 'lobby' && lobbyMusicFile) {
+      setTimeout(() => {
+        playLobbyMusic();
+      }, 500);
+    }
+  }
 }
 
 // Eventos de los botones principales
@@ -185,45 +241,52 @@ async function handleAuth(mode) {
       
       users.push(newUser);
       localStorage.setItem('users', JSON.stringify(users));
+      localStorage.setItem('currentUser', JSON.stringify(newUser));
       
       showMessage('Usuario registrado exitosamente', 'success');
       setTimeout(() => {
-        showScreen(landing);
+        if (newUser.role === 'admin') {
+          showAdminPanel();
+        } else {
+          showCharacterSelection();
+        }
       }, 1000);
       
     } else {
       // Login
       const user = users.find(u => u.username === username && u.password === password);
       if (!user) {
-        errorDiv.textContent = 'Credenciales inválidas';
+        errorDiv.textContent = 'Usuario o contraseña incorrectos';
         return;
       }
       
-      // Guardar sesión
       localStorage.setItem('currentUser', JSON.stringify(user));
-      showMessage('Login exitoso', 'success');
+      showMessage('Inicio de sesión exitoso', 'success');
       
-      // Redirigir según el rol
-      if (user.role === 'admin') {
-        setTimeout(() => {
+      setTimeout(() => {
+        if (user.role === 'admin') {
           showAdminPanel();
-        }, 1000);
-      } else {
-        setTimeout(() => {
+        } else {
           showCharacterSelection();
-        }, 1000);
-      }
+        }
+      }, 1000);
     }
-  } catch (err) {
-    console.error('Error en handleAuth:', err);
-    errorDiv.textContent = 'Error interno';
+  } catch (error) {
+    console.error('Error en autenticación:', error);
+    errorDiv.textContent = 'Error en el servidor';
   }
 }
 
-// Mostrar panel admin
 function showAdminPanel() {
   showScreen(adminPanel);
   renderAdminPanel();
+  
+  // Reproducir música de lobby automáticamente
+  setTimeout(() => {
+    if (lobbyMusicFile) {
+      playLobbyMusic();
+    }
+  }, 500);
 }
 
 function renderAdminPanel() {
@@ -231,6 +294,12 @@ function renderAdminPanel() {
   adminPanel.innerHTML = `
     <div class="flex flex-col items-center justify-center space-y-6 w-full max-w-2xl mx-auto">
       <h2 class="text-3xl font-bold text-white mb-4">Panel de Administración</h2>
+      
+      <!-- Botón de música -->
+      <button id="admin-music-toggle" onclick="toggleLobbyMusic()" class="bg-purple-600 text-white px-6 py-3 rounded-lg hover:bg-purple-700 transition">
+        🔊 Música
+      </button>
+      
       <div class="bg-white bg-opacity-90 p-4 rounded-lg mb-4">
         <p class="text-sm text-gray-600">Admin: <span class="font-bold">${currentUser.username}</span></p>
         <p class="text-sm text-gray-600">ID: <span class="font-bold">${currentUser.userId}</span></p>
@@ -247,6 +316,7 @@ function renderAdminPanel() {
             <input type="text" name="city" placeholder="Ciudad" class="w-full p-2 border rounded">
             <input type="text" name="team" placeholder="Equipo" class="w-full p-2 border rounded">
             <input type="text" name="image" placeholder="URL de imagen" class="w-full p-2 border rounded">
+            <input type="text" name="specialAttackAnimationUrl" placeholder="URL de animación especial" class="w-full p-2 border rounded">
             <button type="submit" class="w-full bg-blue-500 text-white py-2 rounded hover:bg-blue-600">Agregar Héroe</button>
           </form>
         </div>
@@ -260,8 +330,68 @@ function renderAdminPanel() {
             <input type="text" name="city" placeholder="Ciudad" class="w-full p-2 border rounded">
             <input type="text" name="team" placeholder="Equipo" class="w-full p-2 border rounded">
             <input type="text" name="image" placeholder="URL de imagen" class="w-full p-2 border rounded">
+            <input type="text" name="specialAttackAnimationUrl" placeholder="URL de animación especial" class="w-full p-2 border rounded">
             <button type="submit" class="w-full bg-red-500 text-white py-2 rounded hover:bg-red-600">Agregar Villano</button>
           </form>
+        </div>
+      </div>
+      
+      <!-- Configuración de Música -->
+      <div class="bg-white bg-opacity-90 p-6 rounded-lg w-full">
+        <h3 class="text-xl font-bold mb-4">🎵 Configuración de Música</h3>
+        
+        <!-- Música de Lobby -->
+        <div class="mb-6">
+          <h4 class="text-lg font-semibold mb-3">🎮 Música de Lobby (Fondo General)</h4>
+          <div class="bg-blue-50 p-4 rounded-lg mb-3">
+            <p class="text-sm text-blue-800">Se reproducirá automáticamente en: Landing, Admin, Selección de Personajes</p>
+          </div>
+          <div class="flex items-center gap-4">
+            <input type="file" id="lobby-music-input" accept=".mp3" class="hidden">
+            <button onclick="document.getElementById('lobby-music-input').click()" class="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700 transition">
+              📁 Adjuntar Música de Lobby
+            </button>
+            <button id="remove-lobby-music" onclick="removeLobbyMusic()" class="bg-red-600 text-white px-4 py-2 rounded hover:bg-red-700 transition hidden">
+              🗑️ Eliminar Música de Lobby
+            </button>
+            <div id="lobby-music-info" class="text-sm text-gray-600"></div>
+          </div>
+          <div id="lobby-music-preview" class="mt-2"></div>
+        </div>
+        
+        <!-- Música de Batalla -->
+        <div class="mb-6">
+          <h4 class="text-lg font-semibold mb-3">⚔️ Música de Batalla</h4>
+          <div class="bg-red-50 p-4 rounded-lg mb-3">
+            <p class="text-sm text-red-800">Se reproducirá automáticamente durante las batallas</p>
+          </div>
+          <div class="flex items-center gap-4">
+            <input type="file" id="battle-music-input" accept=".mp3" class="hidden">
+            <button onclick="document.getElementById('battle-music-input').click()" class="bg-red-600 text-white px-4 py-2 rounded hover:bg-red-700 transition">
+              📁 Adjuntar Música de Batalla
+            </button>
+            <button id="remove-battle-music" onclick="removeBattleMusic()" class="bg-red-600 text-white px-4 py-2 rounded hover:bg-red-700 transition hidden">
+              🗑️ Eliminar Música de Batalla
+            </button>
+            <div id="battle-music-info" class="text-sm text-gray-600"></div>
+          </div>
+          <div id="battle-music-preview" class="mt-2"></div>
+        </div>
+        
+        <!-- Controles de Música -->
+        <div class="bg-gray-50 p-4 rounded-lg">
+          <h4 class="text-lg font-semibold mb-3">🎛️ Controles de Música</h4>
+          <div class="flex gap-4">
+            <button id="play-lobby-music" class="bg-green-600 text-white px-4 py-2 rounded hover:bg-green-700 transition">
+              ▶️ Reproducir Lobby
+            </button>
+            <button id="play-battle-music" class="bg-purple-600 text-white px-4 py-2 rounded hover:bg-purple-700 transition">
+              ⚔️ Reproducir Batalla
+            </button>
+            <button id="stop-music" class="bg-gray-600 text-white px-4 py-2 rounded hover:bg-gray-700 transition">
+              ⏹️ Detener Música
+            </button>
+          </div>
         </div>
       </div>
       
@@ -289,9 +419,19 @@ function renderAdminPanel() {
   document.getElementById('hero-form').addEventListener('submit', handleAddHero);
   document.getElementById('villain-form').addEventListener('submit', handleAddVillain);
   
+  // Event listeners para música
+  document.getElementById('lobby-music-input').addEventListener('change', handleLobbyMusicUpload);
+  document.getElementById('battle-music-input').addEventListener('change', handleBattleMusicUpload);
+  document.getElementById('play-lobby-music').addEventListener('click', playLobbyMusic);
+  document.getElementById('play-battle-music').addEventListener('click', playBattleMusic);
+  document.getElementById('stop-music').addEventListener('click', stopMusic);
+  
   // Cargar listas
   loadHeroes();
   loadVillains();
+  
+  // Cargar música guardada si existe
+  loadSavedMusic();
 }
 
 // Manejar agregar héroe
@@ -304,12 +444,23 @@ async function handleAddHero(e) {
     alias: formData.get('alias'),
     city: formData.get('city'),
     team: formData.get('team'),
-    image: formData.get('image')
+    image: formData.get('image'),
+    specialAttackAnimationUrl: formData.get('specialAttackAnimationUrl')
   };
   
   if (!heroData.name || !heroData.alias) {
     showMessage('Nombre y alias son requeridos', 'error');
     return;
+  }
+
+  // Validar URL de imagen si se proporciona
+  if (heroData.image && heroData.image.trim() !== '') {
+    try {
+      new URL(heroData.image);
+    } catch (e) {
+      showMessage('URL de imagen inválida. Se usará imagen por defecto.', 'warning');
+      heroData.image = '';
+    }
   }
 
   try {
@@ -326,6 +477,9 @@ async function handleAddHero(e) {
     const newHero = {
       heroId: `HERO_${Date.now()}`,
       ...heroData,
+      // Asegurar que los campos multimedia estén presentes
+      image: heroData.image || '',
+      specialAttackAnimationUrl: heroData.specialAttackAnimationUrl || '',
       createdBy: currentUser.userId,
       createdAt: new Date().toISOString()
     };
@@ -352,12 +506,23 @@ async function handleAddVillain(e) {
     alias: formData.get('alias'),
     city: formData.get('city'),
     team: formData.get('team'),
-    image: formData.get('image')
+    image: formData.get('image'),
+    specialAttackAnimationUrl: formData.get('specialAttackAnimationUrl')
   };
   
   if (!villainData.name || !villainData.alias) {
     showMessage('Nombre y alias son requeridos', 'error');
     return;
+  }
+
+  // Validar URL de imagen si se proporciona
+  if (villainData.image && villainData.image.trim() !== '') {
+    try {
+      new URL(villainData.image);
+    } catch (e) {
+      showMessage('URL de imagen inválida. Se usará imagen por defecto.', 'warning');
+      villainData.image = '';
+    }
   }
 
   try {
@@ -374,6 +539,9 @@ async function handleAddVillain(e) {
     const newVillain = {
       villainId: `VILLAIN_${Date.now()}`,
       ...villainData,
+      // Asegurar que los campos multimedia estén presentes
+      image: villainData.image || '',
+      specialAttackAnimationUrl: villainData.specialAttackAnimationUrl || '',
       createdBy: currentUser.userId,
       createdAt: new Date().toISOString()
     };
@@ -390,156 +558,443 @@ async function handleAddVillain(e) {
   }
 }
 
-// Cargar héroes
-async function loadHeroes() {
-  const list = document.getElementById('heroes-list');
-  if (!list) return;
-  
-  list.innerHTML = '<div class="text-white">Cargando...</div>';
-  try {
-    const heroes = JSON.parse(localStorage.getItem('heroes') || '[]');
-    list.innerHTML = heroes.map(h => `
-      <div class="bg-white bg-opacity-80 rounded-lg p-4 flex flex-col items-center">
-        <img src="${h.image || 'https://via.placeholder.com/100x100?text=Hero'}" alt="${h.name}" class="w-24 h-24 object-cover rounded-full mb-2">
-        <div class="font-bold">${h.name}</div>
-        <div class="text-sm text-gray-600">${h.alias}</div>
-        <div class="text-xs text-gray-500">${h.city} - ${h.team}</div>
-        <div class="text-xs text-blue-600 font-mono">${h.heroId}</div>
-        <div class="flex gap-2 mt-2">
-          <button onclick="editHero('${h.heroId}')" class="px-3 py-1 bg-blue-500 text-white text-xs rounded hover:bg-blue-600">
-            Editar
-          </button>
-          <button onclick="deleteHero('${h.heroId}')" class="px-3 py-1 bg-red-500 text-white text-xs rounded hover:bg-red-600">
-            Eliminar
-          </button>
-        </div>
-      </div>
-    `).join('');
-  } catch (err) {
-    list.innerHTML = '<div class="text-red-600">Error al cargar héroes</div>';
+// Funciones para manejar música
+function handleLobbyMusicUpload(event) {
+  const file = event.target.files[0];
+  if (file && file.type === 'audio/mpeg') {
+    lobbyMusicFile = file;
+    const info = document.getElementById('lobby-music-info');
+    const preview = document.getElementById('lobby-music-preview');
+    const removeBtn = document.getElementById('remove-lobby-music');
+    
+    info.innerHTML = `✅ ${file.name} (${(file.size / 1024 / 1024).toFixed(2)} MB)`;
+    preview.innerHTML = `
+      <audio controls class="w-full mt-2">
+        <source src="${URL.createObjectURL(file)}" type="audio/mpeg">
+      </audio>
+    `;
+    removeBtn.classList.remove('hidden');
+    
+    // Guardar en localStorage para persistencia
+    const reader = new FileReader();
+    reader.onload = function(e) {
+      const base64 = btoa(String.fromCharCode(...new Uint8Array(e.target.result)));
+      localStorage.setItem('lobbyMusicFile', base64);
+      console.log('🎵 Música de lobby guardada en localStorage');
+    };
+    reader.readAsArrayBuffer(file);
+    
+    showMessage('Música de lobby cargada exitosamente', 'success');
+    
+    // Reproducir automáticamente si estamos en una pantalla de lobby
+    if (currentMusicType !== 'battle') {
+      playLobbyMusic();
+    }
+  } else {
+    showMessage('Por favor selecciona un archivo MP3 válido', 'error');
   }
 }
 
-// Cargar villanos
-async function loadVillains() {
-  const list = document.getElementById('villains-list');
-  if (!list) return;
+function handleBattleMusicUpload(event) {
+  const file = event.target.files[0];
+  if (file && file.type === 'audio/mpeg') {
+    battleMusicFile = file;
+    const info = document.getElementById('battle-music-info');
+    const preview = document.getElementById('battle-music-preview');
+    const removeBtn = document.getElementById('remove-battle-music');
+    
+    info.innerHTML = `✅ ${file.name} (${(file.size / 1024 / 1024).toFixed(2)} MB)`;
+    preview.innerHTML = `
+      <audio controls class="w-full mt-2">
+        <source src="${URL.createObjectURL(file)}" type="audio/mpeg">
+      </audio>
+    `;
+    removeBtn.classList.remove('hidden');
+    
+    // Guardar en localStorage para persistencia
+    const reader = new FileReader();
+    reader.onload = function(e) {
+      const base64 = btoa(String.fromCharCode(...new Uint8Array(e.target.result)));
+      localStorage.setItem('battleMusicFile', base64);
+      console.log('⚔️ Música de batalla guardada en localStorage');
+    };
+    reader.readAsArrayBuffer(file);
+    
+    showMessage('Música de batalla cargada exitosamente', 'success');
+  } else {
+    showMessage('Por favor selecciona un archivo MP3 válido', 'error');
+  }
+}
+
+function playLobbyMusic() {
+  if (lobbyMusicFile && isMusicEnabled) {
+    stopMusic();
+    currentAudio = new Audio(URL.createObjectURL(lobbyMusicFile));
+    currentAudio.loop = true;
+    currentAudio.volume = isMusicMuted ? 0 : 0.5;
+    currentMusicType = 'lobby';
+    
+    currentAudio.play().then(() => {
+      console.log('🎵 Reproduciendo música de lobby automáticamente');
+      isMusicPaused = false;
+    }).catch(error => {
+      console.error('Error al reproducir música de lobby:', error);
+    });
+  }
+}
+
+function playBattleMusic() {
+  if (battleMusicFile && isMusicEnabled) {
+    stopMusic();
+    currentAudio = new Audio(URL.createObjectURL(battleMusicFile));
+    currentAudio.loop = true;
+    currentAudio.volume = isMusicMuted ? 0 : 0.7;
+    currentMusicType = 'battle';
+    
+    currentAudio.play().then(() => {
+      console.log('⚔️ Reproduciendo música de batalla automáticamente');
+      isMusicPaused = false;
+    }).catch(error => {
+      console.error('Error al reproducir música de batalla:', error);
+    });
+  }
+}
+
+function stopMusic() {
+  if (currentAudio) {
+    currentAudio.pause();
+    currentAudio = null;
+    console.log('🔇 Música detenida');
+  }
+}
+
+// Variable para controlar si la música está pausada
+let isMusicPaused = false;
+
+function toggleBattleMusic() {
+  const musicToggle = document.getElementById('music-toggle');
   
-  list.innerHTML = '<div class="text-white">Cargando...</div>';
+  if (isMusicPaused) {
+    // Reactivar música
+    if (battleMusicFile) {
+      playBattleMusic();
+      musicToggle.innerHTML = '🔊 Música';
+      musicToggle.className = 'bg-purple-600 text-white px-6 py-3 rounded-lg hover:bg-purple-700 transition';
+      isMusicPaused = false;
+    }
+  } else {
+    // Pausar música
+    if (currentAudio) {
+      currentAudio.pause();
+      musicToggle.innerHTML = '🔇 Sin Música';
+      musicToggle.className = 'bg-gray-600 text-white px-6 py-3 rounded-lg hover:bg-gray-700 transition';
+      isMusicPaused = true;
+    }
+  }
+}
+
+// Variable para controlar si la música está silenciada
+let isMusicMuted = false;
+
+function toggleLobbyMusic() {
+  const lobbyMusicToggle = document.getElementById('lobby-music-toggle');
+  const adminMusicToggle = document.getElementById('admin-music-toggle');
+  
+  if (isMusicMuted) {
+    // Reactivar música (subir volumen)
+    if (currentAudio) {
+      currentAudio.volume = 0.5; // Volumen normal de lobby
+      isMusicMuted = false;
+      
+      // Actualizar botones
+      if (lobbyMusicToggle) {
+        lobbyMusicToggle.innerHTML = '🔊 Música';
+        lobbyMusicToggle.className = 'bg-purple-600 text-white px-6 py-3 rounded-lg hover:bg-purple-700 transition';
+      }
+      if (adminMusicToggle) {
+        adminMusicToggle.innerHTML = '🔊 Música';
+        adminMusicToggle.className = 'bg-purple-600 text-white px-6 py-3 rounded-lg hover:bg-purple-700 transition';
+      }
+      
+      showMessage('Música reactivada', 'success');
+    }
+  } else {
+    // Silenciar música (bajar volumen a 0)
+    if (currentAudio) {
+      currentAudio.volume = 0;
+      isMusicMuted = true;
+      
+      // Actualizar botones
+      if (lobbyMusicToggle) {
+        lobbyMusicToggle.innerHTML = '🔇 Sin Música';
+        lobbyMusicToggle.className = 'bg-gray-600 text-white px-6 py-3 rounded-lg hover:bg-gray-700 transition';
+      }
+      if (adminMusicToggle) {
+        adminMusicToggle.innerHTML = '🔇 Sin Música';
+        adminMusicToggle.className = 'bg-gray-600 text-white px-6 py-3 rounded-lg hover:bg-gray-700 transition';
+      }
+      
+      showMessage('Música silenciada', 'info');
+    }
+  }
+}
+
+function removeLobbyMusic() {
+  lobbyMusicFile = null;
+  localStorage.removeItem('lobbyMusicFile');
+  
+  const info = document.getElementById('lobby-music-info');
+  const preview = document.getElementById('lobby-music-preview');
+  const removeBtn = document.getElementById('remove-lobby-music');
+  
+  if (info) info.innerHTML = '';
+  if (preview) preview.innerHTML = '';
+  if (removeBtn) removeBtn.classList.add('hidden');
+  
+  // Detener música si está reproduciendo lobby
+  if (currentMusicType === 'lobby') {
+    stopMusic();
+  }
+  
+  showMessage('Música de lobby eliminada', 'success');
+}
+
+function removeBattleMusic() {
+  battleMusicFile = null;
+  localStorage.removeItem('battleMusicFile');
+  
+  const info = document.getElementById('battle-music-info');
+  const preview = document.getElementById('battle-music-preview');
+  const removeBtn = document.getElementById('remove-battle-music');
+  
+  if (info) info.innerHTML = '';
+  if (preview) preview.innerHTML = '';
+  if (removeBtn) removeBtn.classList.add('hidden');
+  
+  // Detener música si está reproduciendo batalla
+  if (currentMusicType === 'battle') {
+    stopMusic();
+  }
+  
+  showMessage('Música de batalla eliminada', 'success');
+}
+
+// Cargar héroes desde localStorage
+async function loadHeroes() {
+  try {
+    const heroes = JSON.parse(localStorage.getItem('heroes') || '[]');
+    const heroesList = document.getElementById('heroes-list');
+    
+    if (heroesList) {
+      heroesList.innerHTML = '';
+      
+      heroes.forEach(hero => {
+        const heroDiv = document.createElement('div');
+        heroDiv.className = 'flex justify-between items-center p-3 bg-gray-50 rounded';
+        heroDiv.innerHTML = `
+          <div>
+            <strong>${hero.name}</strong> (${hero.alias})
+            <br><small class="text-gray-600">${hero.city} - ${hero.team}</small>
+          </div>
+          <div class="flex gap-2">
+            <button onclick="editHero('${hero.heroId}')" class="bg-yellow-500 text-white px-2 py-1 rounded text-sm">Editar</button>
+            <button onclick="deleteHero('${hero.heroId}')" class="bg-red-500 text-white px-2 py-1 rounded text-sm">Eliminar</button>
+          </div>
+        `;
+        heroesList.appendChild(heroDiv);
+      });
+    }
+  } catch (error) {
+    console.error('Error al cargar héroes:', error);
+  }
+}
+
+// Cargar villanos desde localStorage
+async function loadVillains() {
   try {
     const villains = JSON.parse(localStorage.getItem('villains') || '[]');
-    list.innerHTML = villains.map(v => `
-      <div class="bg-white bg-opacity-80 rounded-lg p-4 flex flex-col items-center">
-        <img src="${v.image || 'https://via.placeholder.com/100x100?text=Villain'}" alt="${v.name}" class="w-24 h-24 object-cover rounded-full mb-2">
-        <div class="font-bold">${v.name}</div>
-        <div class="text-sm text-gray-600">${v.alias}</div>
-        <div class="text-xs text-gray-500">${v.city} - ${v.team}</div>
-        <div class="text-xs text-red-600 font-mono">${v.villainId}</div>
-        <div class="flex gap-2 mt-2">
-          <button onclick="editVillain('${v.villainId}')" class="px-3 py-1 bg-blue-500 text-white text-xs rounded hover:bg-blue-600">
-            Editar
-          </button>
-          <button onclick="deleteVillain('${v.villainId}')" class="px-3 py-1 bg-red-500 text-white text-xs rounded hover:bg-red-600">
-            Eliminar
-          </button>
-        </div>
-      </div>
-    `).join('');
-  } catch (err) {
-    list.innerHTML = '<div class="text-red-600">Error al cargar villanos</div>';
+    const villainsList = document.getElementById('villains-list');
+    
+    if (villainsList) {
+      villainsList.innerHTML = '';
+      
+      villains.forEach(villain => {
+        const villainDiv = document.createElement('div');
+        villainDiv.className = 'flex justify-between items-center p-3 bg-gray-50 rounded';
+        villainDiv.innerHTML = `
+          <div>
+            <strong>${villain.name}</strong> (${villain.alias})
+            <br><small class="text-gray-600">${villain.city} - ${villain.team}</small>
+          </div>
+          <div class="flex gap-2">
+            <button onclick="editVillain('${villain.villainId}')" class="bg-yellow-500 text-white px-2 py-1 rounded text-sm">Editar</button>
+            <button onclick="deleteVillain('${villain.villainId}')" class="bg-red-500 text-white px-2 py-1 rounded text-sm">Eliminar</button>
+          </div>
+        `;
+        villainsList.appendChild(villainDiv);
+      });
+    }
+  } catch (error) {
+    console.error('Error al cargar villanos:', error);
   }
 }
 
 // Editar héroe
 async function editHero(heroId) {
-  const heroes = JSON.parse(localStorage.getItem('heroes') || '[]');
-  const hero = heroes.find(h => h.heroId === heroId);
-  
-  if (!hero) {
-    showMessage('Héroe no encontrado', 'error');
-    return;
+  try {
+    const heroes = JSON.parse(localStorage.getItem('heroes') || '[]');
+    const hero = heroes.find(h => h.heroId === heroId);
+    
+    if (!hero) {
+      showMessage('Héroe no encontrado', 'error');
+      return;
+    }
+    
+    const newName = prompt('Nuevo nombre:', hero.name);
+    if (newName === null) return;
+    
+    const newAlias = prompt('Nuevo alias:', hero.alias);
+    if (newAlias === null) return;
+    
+    const newCity = prompt('Nueva ciudad:', hero.city);
+    if (newCity === null) return;
+    
+    const newTeam = prompt('Nuevo equipo:', hero.team);
+    if (newTeam === null) return;
+    
+    const newImage = prompt('Nueva URL de imagen (dejar vacío para imagen por defecto):', hero.image);
+    if (newImage === null) return;
+    
+    const newAnimationUrl = prompt('Nueva URL de animación especial (opcional):', hero.specialAttackAnimationUrl);
+    if (newAnimationUrl === null) return;
+    
+    // Validar URL de imagen
+    if (newImage && newImage.trim() !== '') {
+      try {
+        new URL(newImage);
+      } catch (e) {
+        showMessage('URL de imagen inválida. Se usará imagen por defecto.', 'warning');
+        newImage = '';
+      }
+    }
+    
+    // Actualizar héroe
+    hero.name = newName || hero.name;
+    hero.alias = newAlias || hero.alias;
+    hero.city = newCity || hero.city;
+    hero.team = newTeam || hero.team;
+    hero.image = newImage || '';
+    hero.specialAttackAnimationUrl = newAnimationUrl || hero.specialAttackAnimationUrl;
+    
+    localStorage.setItem('heroes', JSON.stringify(heroes));
+    loadHeroes();
+    showMessage('Héroe actualizado exitosamente', 'success');
+  } catch (error) {
+    console.error('Error al editar héroe:', error);
+    showMessage('Error al editar héroe', 'error');
   }
-  
-  const newName = prompt('Nuevo nombre:', hero.name);
-  if (!newName) return;
-  
-  const newAlias = prompt('Nuevo alias:', hero.alias);
-  if (!newAlias) return;
-  
-  const newCity = prompt('Nueva ciudad:', hero.city);
-  const newTeam = prompt('Nuevo equipo:', hero.team);
-  const newImage = prompt('Nueva URL de imagen:', hero.image);
-  
-  hero.name = newName;
-  hero.alias = newAlias;
-  hero.city = newCity || '';
-  hero.team = newTeam || '';
-  hero.image = newImage || '';
-  
-  localStorage.setItem('heroes', JSON.stringify(heroes));
-  showMessage('Héroe actualizado exitosamente', 'success');
-  loadHeroes();
 }
 
 // Eliminar héroe
 async function deleteHero(heroId) {
-  if (!confirm('¿Estás seguro de que quieres eliminar este héroe?')) return;
-  
-  const heroes = JSON.parse(localStorage.getItem('heroes') || '[]');
-  const filteredHeroes = heroes.filter(h => h.heroId !== heroId);
-  
-  localStorage.setItem('heroes', JSON.stringify(filteredHeroes));
-  showMessage('Héroe eliminado exitosamente', 'success');
-  loadHeroes();
+  if (confirm('¿Estás seguro de que quieres eliminar este héroe?')) {
+    try {
+      const heroes = JSON.parse(localStorage.getItem('heroes') || '[]');
+      const filteredHeroes = heroes.filter(h => h.heroId !== heroId);
+      localStorage.setItem('heroes', JSON.stringify(filteredHeroes));
+      loadHeroes();
+      showMessage('Héroe eliminado exitosamente', 'success');
+    } catch (error) {
+      console.error('Error al eliminar héroe:', error);
+      showMessage('Error al eliminar héroe', 'error');
+    }
+  }
 }
 
 // Editar villano
 async function editVillain(villainId) {
-  const villains = JSON.parse(localStorage.getItem('villains') || '[]');
-  const villain = villains.find(v => v.villainId === villainId);
-  
-  if (!villain) {
-    showMessage('Villano no encontrado', 'error');
-    return;
+  try {
+    const villains = JSON.parse(localStorage.getItem('villains') || '[]');
+    const villain = villains.find(v => v.villainId === villainId);
+    
+    if (!villain) {
+      showMessage('Villano no encontrado', 'error');
+      return;
+    }
+    
+    const newName = prompt('Nuevo nombre:', villain.name);
+    if (newName === null) return;
+    
+    const newAlias = prompt('Nuevo alias:', villain.alias);
+    if (newAlias === null) return;
+    
+    const newCity = prompt('Nueva ciudad:', villain.city);
+    if (newCity === null) return;
+    
+    const newTeam = prompt('Nuevo equipo:', villain.team);
+    if (newTeam === null) return;
+    
+    const newImage = prompt('Nueva URL de imagen (dejar vacío para imagen por defecto):', villain.image);
+    if (newImage === null) return;
+    
+    const newAnimationUrl = prompt('Nueva URL de animación especial (opcional):', villain.specialAttackAnimationUrl);
+    if (newAnimationUrl === null) return;
+    
+    // Validar URL de imagen
+    if (newImage && newImage.trim() !== '') {
+      try {
+        new URL(newImage);
+      } catch (e) {
+        showMessage('URL de imagen inválida. Se usará imagen por defecto.', 'warning');
+        newImage = '';
+      }
+    }
+    
+    // Actualizar villano
+    villain.name = newName || villain.name;
+    villain.alias = newAlias || villain.alias;
+    villain.city = newCity || villain.city;
+    villain.team = newTeam || villain.team;
+    villain.image = newImage || '';
+    villain.specialAttackAnimationUrl = newAnimationUrl || villain.specialAttackAnimationUrl;
+    
+    localStorage.setItem('villains', JSON.stringify(villains));
+    loadVillains();
+    showMessage('Villano actualizado exitosamente', 'success');
+  } catch (error) {
+    console.error('Error al editar villano:', error);
+    showMessage('Error al editar villano', 'error');
   }
-  
-  const newName = prompt('Nuevo nombre:', villain.name);
-  if (!newName) return;
-  
-  const newAlias = prompt('Nuevo alias:', villain.alias);
-  if (!newAlias) return;
-  
-  const newCity = prompt('Nueva ciudad:', villain.city);
-  const newTeam = prompt('Nuevo equipo:', villain.team);
-  const newImage = prompt('Nueva URL de imagen:', villain.image);
-  
-  villain.name = newName;
-  villain.alias = newAlias;
-  villain.city = newCity || '';
-  villain.team = newTeam || '';
-  villain.image = newImage || '';
-  
-  localStorage.setItem('villains', JSON.stringify(villains));
-  showMessage('Villano actualizado exitosamente', 'success');
-  loadVillains();
 }
 
 // Eliminar villano
 async function deleteVillain(villainId) {
-  if (!confirm('¿Estás seguro de que quieres eliminar este villano?')) return;
-  
-  const villains = JSON.parse(localStorage.getItem('villains') || '[]');
-  const filteredVillains = villains.filter(v => v.villainId !== villainId);
-  
-  localStorage.setItem('villains', JSON.stringify(filteredVillains));
-  showMessage('Villano eliminado exitosamente', 'success');
-  loadVillains();
+  if (confirm('¿Estás seguro de que quieres eliminar este villano?')) {
+    try {
+      const villains = JSON.parse(localStorage.getItem('villains') || '[]');
+      const filteredVillains = villains.filter(v => v.villainId !== villainId);
+      localStorage.setItem('villains', JSON.stringify(filteredVillains));
+      loadVillains();
+      showMessage('Villano eliminado exitosamente', 'success');
+    } catch (error) {
+      console.error('Error al eliminar villano:', error);
+      showMessage('Error al eliminar villano', 'error');
+    }
+  }
 }
 
 // Mostrar selección de personajes para usuarios normales
 function showCharacterSelection() {
   showScreen(characterSelection);
   renderCharacterSelection();
+  // Detener música actual y reproducir música de lobby
+  stopMusic();
+  isMusicPaused = false;
+  setTimeout(() => {
+    if (lobbyMusicFile) {
+      playLobbyMusic();
+    }
+  }, 500);
 }
 
 function renderCharacterSelection() {
@@ -547,6 +1002,12 @@ function renderCharacterSelection() {
   characterSelection.innerHTML = `
     <div class="flex flex-col items-center justify-center space-y-6 w-full max-w-4xl mx-auto">
       <h2 class="text-3xl font-bold text-white mb-4">Selección de Personajes</h2>
+      
+      <!-- Botón de música -->
+      <button id="lobby-music-toggle" onclick="toggleLobbyMusic()" class="bg-purple-600 text-white px-6 py-3 rounded-lg hover:bg-purple-700 transition">
+        🔊 Música
+      </button>
+      
       <div class="bg-white bg-opacity-90 p-4 rounded-lg mb-4">
         <p class="text-sm text-gray-600">Usuario: <span class="font-bold">${currentUser.username}</span></p>
         <p class="text-sm text-gray-600">Role: <span class="font-bold">${currentUser.role}</span></p>
@@ -587,7 +1048,7 @@ async function loadUserHeroes() {
     const heroes = JSON.parse(localStorage.getItem('heroes') || '[]');
     list.innerHTML = heroes.map(h => `
       <div class="bg-white bg-opacity-80 rounded-lg p-4 flex flex-col items-center">
-        <img src="${h.image || 'https://via.placeholder.com/100x100?text=Hero'}" alt="${h.name}" class="w-24 h-24 object-cover rounded-full mb-2">
+        ${createImageElement(getImageWithFallback(h.image, h.name, 'hero'), h.name, 'w-24 h-24 object-cover rounded-full mb-2')}
         <div class="font-bold">${h.name}</div>
         <div class="text-sm text-gray-600">${h.alias}</div>
         <div class="text-xs text-gray-500">${h.city} - ${h.team}</div>
@@ -610,7 +1071,7 @@ async function loadUserVillains() {
     const villains = JSON.parse(localStorage.getItem('villains') || '[]');
     list.innerHTML = villains.map(v => `
       <div class="bg-white bg-opacity-80 rounded-lg p-4 flex flex-col items-center">
-        <img src="${v.image || 'https://via.placeholder.com/100x100?text=Villain'}" alt="${v.name}" class="w-24 h-24 object-cover rounded-full mb-2">
+        ${createImageElement(getImageWithFallback(v.image, v.name, 'villain'), v.name, 'w-24 h-24 object-cover rounded-full mb-2')}
         <div class="font-bold">${v.name}</div>
         <div class="text-sm text-gray-600">${v.alias}</div>
         <div class="text-xs text-gray-500">${v.city} - ${v.team}</div>
@@ -638,6 +1099,7 @@ function selectHero(heroId) {
     return;
   }
   
+  // Agregar al final para mantener orden de selección
   selectedHeroes.push(heroId);
   localStorage.setItem('selectedHeroes', JSON.stringify(selectedHeroes));
   showMessage('Héroe seleccionado', 'success');
@@ -658,6 +1120,7 @@ function selectVillain(villainId) {
     return;
   }
   
+  // Agregar al final para mantener orden de selección
   selectedVillains.push(villainId);
   localStorage.setItem('selectedVillains', JSON.stringify(selectedVillains));
   showMessage('Villano seleccionado', 'success');
@@ -729,6 +1192,16 @@ function startBattle() {
 function showBattleScreen() {
   showScreen(battleScreen);
   renderBattleScreen();
+  
+  // Cambiar automáticamente a música de batalla
+  if (currentMusicType !== 'battle') {
+    stopMusic();
+    setTimeout(() => {
+      if (battleMusicFile) {
+        playBattleMusic();
+      }
+    }, 300);
+  }
 }
 
 function renderBattleScreen() {
@@ -754,7 +1227,7 @@ function renderBattleScreen() {
             ${battleHeroes.map((hero, index) => `
               <div class="battle-card bg-white bg-opacity-90 rounded-lg p-4">
                 <div class="flex items-center space-x-4">
-                  <img src="${hero.image || 'https://via.placeholder.com/60x60?text=Hero'}" alt="${hero.name}" class="w-16 h-16 object-cover rounded-full">
+                  ${createImageElement(getImageWithFallback(hero.image, hero.name, 'hero'), hero.name, 'w-16 h-16 object-cover rounded-full')}
                   <div class="flex-1">
                     <div class="font-bold text-lg">${hero.name}</div>
                     <div class="text-sm text-gray-600">${hero.alias}</div>
@@ -811,7 +1284,7 @@ function renderBattleScreen() {
             ${battleVillains.map((villain, index) => `
               <div class="battle-card bg-white bg-opacity-90 rounded-lg p-4">
                 <div class="flex items-center space-x-4">
-                  <img src="${villain.image || 'https://via.placeholder.com/60x60?text=Villain'}" alt="${villain.name}" class="w-16 h-16 object-cover rounded-full">
+                  ${createImageElement(getImageWithFallback(villain.image, villain.name, 'villain'), villain.name, 'w-16 h-16 object-cover rounded-full')}
                   <div class="flex-1">
                     <div class="font-bold text-lg">${villain.name}</div>
                     <div class="text-sm text-gray-600">${villain.alias}</div>
@@ -869,6 +1342,9 @@ function renderBattleScreen() {
         </button>
         <button onclick="resetBattle()" class="bg-yellow-600 text-white px-6 py-3 rounded-lg hover:bg-yellow-700 transition">
           🔄 Reiniciar
+        </button>
+        <button onclick="toggleBattleMusic()" id="music-toggle" class="bg-purple-600 text-white px-6 py-3 rounded-lg hover:bg-purple-700 transition">
+          🔊 Música
         </button>
       </div>
       
@@ -1210,16 +1686,9 @@ function heroAttack(heroIndex, attackType) {
     setTimeout(() => targetHealthBar.classList.remove('health-bar-damage'), 300);
   }
   
-  // Mostrar animación especial para héroes específicos
+  // Mostrar animación especial dinámica
   if (attackType === 'special') {
-    const heroName = hero.name.toLowerCase();
-    if (heroName.includes('iron man')) {
-      showIronManSpecialAnimation(heroIndex);
-    } else if (heroName.includes('spider') || heroName.includes('peter')) {
-      showSpiderManSpecialAnimation(heroIndex);
-    } else if (heroName.includes('captain') || heroName.includes('steve')) {
-      showCaptainAmericaSpecialAnimation(heroIndex);
-    }
+    showDynamicSpecialAnimation(hero, heroIndex, 'hero');
   }
   
   // Agregar al log con información de posición
@@ -1264,34 +1733,57 @@ function heroAttack(heroIndex, attackType) {
 }
 
 // Función para mostrar animación especial de Iron Man
-function showIronManSpecialAnimation(heroIndex) {
+// Función dinámica para mostrar animación especial
+function showDynamicSpecialAnimation(character, characterIndex, type) {
   // Crear el overlay de animación
   const animationOverlay = document.createElement('div');
   animationOverlay.className = 'iron-man-special';
   
-  // Crear el contenido de la animación
-  animationOverlay.innerHTML = `
-    <div class="iron-man-animation">
-      <div class="iron-man-character">🦸‍♂️</div>
-      <div class="energy-beam"></div>
-      <div class="energy-ring"></div>
-      <div class="energy-streaks">
-        ${Array.from({length: 8}, (_, i) => `
-          <div class="energy-streak" style="
-            left: ${20 + i * 45}px;
-            animation-delay: ${i * 0.1}s;
-          "></div>
-        `).join('')}
+  // Si hay URL de animación personalizada, usarla
+  if (character.specialAttackAnimationUrl) {
+    animationOverlay.innerHTML = `
+      <div class="custom-animation">
+        <img src="${character.specialAttackAnimationUrl}" alt="Animación especial" style="max-width: 100%; max-height: 100%; object-fit: contain;">
       </div>
-    </div>
-  `;
+    `;
+  } else {
+    // Animación por defecto
+    const emoji = type === 'hero' ? '🦸‍♂️' : '🦹‍♂️';
+    animationOverlay.innerHTML = `
+      <div class="iron-man-animation">
+        <div class="iron-man-character">${emoji}</div>
+        <div class="energy-beam"></div>
+        <div class="energy-ring"></div>
+        <div class="energy-streaks">
+          ${Array.from({length: 6}, (_, i) => `
+            <div class="energy-streak" style="
+              left: ${30 + i * 60}px;
+              animation-delay: ${i * 0.1}s;
+            "></div>
+          `).join('')}
+        </div>
+      </div>
+    `;
+  }
   
   // Agregar al DOM
   document.body.appendChild(animationOverlay);
   
-  // Reproducir sonido de ataque especial (opcional)
-  // const audio = new Audio('path/to/special-attack-sound.mp3');
-  // audio.play();
+  // Reproducir sonido especial si está disponible
+  const characterId = character.heroId || character.villainId;
+  const soundFile = character.heroId ? heroSoundFiles[characterId] : villainSoundFiles[characterId];
+  
+  if (soundFile) {
+    try {
+      const audio = new Audio(URL.createObjectURL(soundFile));
+      audio.volume = 0.7;
+      audio.play().catch(error => {
+        console.log('No se pudo reproducir el sonido especial:', error);
+      });
+    } catch (error) {
+      console.log('Error al cargar el sonido especial:', error);
+    }
+  }
   
   // Remover la animación después de 3 segundos
   setTimeout(() => {
@@ -1301,73 +1793,7 @@ function showIronManSpecialAnimation(heroIndex) {
   }, 3000);
   
   // Agregar mensaje especial al log
-  addBattleLog(`⚡ ¡IRON MAN ejecuta su ATAQUE ESPECIAL! ¡Rayo Repulsor activado!`);
-}
-
-// Función para mostrar animación especial de Spider-Man
-function showSpiderManSpecialAnimation(heroIndex) {
-  const animationOverlay = document.createElement('div');
-  animationOverlay.className = 'iron-man-special'; // Reutilizamos la clase
-  
-  animationOverlay.innerHTML = `
-    <div class="iron-man-animation" style="background: linear-gradient(135deg, #dc2626 0%, #ef4444 50%, #fca5a5 100%);">
-      <div class="iron-man-character" style="background: linear-gradient(45deg, #dc2626 0%, #ef4444 50%, #fca5a5 100%);">🕷️</div>
-      <div class="energy-beam" style="background: linear-gradient(90deg, #dc2626 0%, #ef4444 50%, #fca5a5 100%);"></div>
-      <div class="energy-ring" style="border-color: #dc2626;"></div>
-      <div class="energy-streaks">
-        ${Array.from({length: 6}, (_, i) => `
-          <div class="energy-streak" style="
-            left: ${30 + i * 60}px;
-            animation-delay: ${i * 0.15}s;
-            background: linear-gradient(180deg, #dc2626 0%, transparent 100%);
-          "></div>
-        `).join('')}
-      </div>
-    </div>
-  `;
-  
-  document.body.appendChild(animationOverlay);
-  
-  setTimeout(() => {
-    if (animationOverlay.parentNode) {
-      animationOverlay.parentNode.removeChild(animationOverlay);
-    }
-  }, 3000);
-  
-  addBattleLog(`🕷️ ¡SPIDER-MAN ejecuta su ATAQUE ESPECIAL! ¡Telaraña de Energía!`);
-}
-
-// Función para mostrar animación especial de Captain America
-function showCaptainAmericaSpecialAnimation(heroIndex) {
-  const animationOverlay = document.createElement('div');
-  animationOverlay.className = 'iron-man-special';
-  
-  animationOverlay.innerHTML = `
-    <div class="iron-man-animation" style="background: linear-gradient(135deg, #1e40af 0%, #3b82f6 50%, #60a5fa 100%);">
-      <div class="iron-man-character" style="background: linear-gradient(45deg, #1e40af 0%, #3b82f6 50%, #60a5fa 100%);">🛡️</div>
-      <div class="energy-beam" style="background: linear-gradient(90deg, #1e40af 0%, #3b82f6 50%, #60a5fa 100%);"></div>
-      <div class="energy-ring" style="border-color: #1e40af;"></div>
-      <div class="energy-streaks">
-        ${Array.from({length: 4}, (_, i) => `
-          <div class="energy-streak" style="
-            left: ${50 + i * 80}px;
-            animation-delay: ${i * 0.2}s;
-            background: linear-gradient(180deg, #1e40af 0%, transparent 100%);
-          "></div>
-        `).join('')}
-      </div>
-    </div>
-  `;
-  
-  document.body.appendChild(animationOverlay);
-  
-  setTimeout(() => {
-    if (animationOverlay.parentNode) {
-      animationOverlay.parentNode.removeChild(animationOverlay);
-    }
-  }, 3000);
-  
-  addBattleLog(`🛡️ ¡CAPTAIN AMERICA ejecuta su ATAQUE ESPECIAL! ¡Escudo de Energía!`);
+  addBattleLog(`⚡ ¡${character.name.toUpperCase()} ejecuta su ATAQUE ESPECIAL!`);
 }
 
 // Ataque de villano
@@ -1428,16 +1854,9 @@ function villainAttack(villainIndex, attackType) {
     villain.power = Math.min(100, villain.power + powerGain);
   }
   
-  // Mostrar animación especial para villanos específicos
+  // Mostrar animación especial dinámica
   if (attackType === 'special') {
-    const villainName = villain.name.toLowerCase();
-    if (villainName.includes('thanos')) {
-      showThanosSpecialAnimation(villainIndex);
-    } else if (villainName.includes('loki')) {
-      showLokiSpecialAnimation(villainIndex);
-    } else if (villainName.includes('venom') || villainName.includes('eddie')) {
-      showVenomSpecialAnimation(villainIndex);
-    }
+    showDynamicSpecialAnimation(villain, villainIndex, 'villain');
   }
   
   // Agregar animación de daño
@@ -1488,104 +1907,7 @@ function villainAttack(villainIndex, attackType) {
   checkBattleEnd();
 }
 
-// Función para mostrar animación especial de Thanos
-function showThanosSpecialAnimation(villainIndex) {
-  const animationOverlay = document.createElement('div');
-  animationOverlay.className = 'iron-man-special';
-  
-  animationOverlay.innerHTML = `
-    <div class="iron-man-animation" style="background: linear-gradient(135deg, #7c3aed 0%, #a855f7 50%, #c084fc 100%);">
-      <div class="iron-man-character" style="background: linear-gradient(45deg, #7c3aed 0%, #a855f7 50%, #c084fc 100%);">💎</div>
-      <div class="energy-beam" style="background: linear-gradient(90deg, #7c3aed 0%, #a855f7 50%, #c084fc 100%);"></div>
-      <div class="energy-ring" style="border-color: #7c3aed;"></div>
-      <div class="energy-streaks">
-        ${Array.from({length: 5}, (_, i) => `
-          <div class="energy-streak" style="
-            left: ${40 + i * 70}px;
-            animation-delay: ${i * 0.12}s;
-            background: linear-gradient(180deg, #7c3aed 0%, transparent 100%);
-          "></div>
-        `).join('')}
-      </div>
-    </div>
-  `;
-  
-  document.body.appendChild(animationOverlay);
-  
-  setTimeout(() => {
-    if (animationOverlay.parentNode) {
-      animationOverlay.parentNode.removeChild(animationOverlay);
-    }
-  }, 3000);
-  
-  addBattleLog(`💎 ¡THANOS ejecuta su ATAQUE ESPECIAL! ¡Poder de las Gemas del Infinito!`);
-}
 
-// Función para mostrar animación especial de Loki
-function showLokiSpecialAnimation(villainIndex) {
-  const animationOverlay = document.createElement('div');
-  animationOverlay.className = 'iron-man-special';
-  
-  animationOverlay.innerHTML = `
-    <div class="iron-man-animation" style="background: linear-gradient(135deg, #059669 0%, #10b981 50%, #34d399 100%);">
-      <div class="iron-man-character" style="background: linear-gradient(45deg, #059669 0%, #10b981 50%, #34d399 100%);">🪄</div>
-      <div class="energy-beam" style="background: linear-gradient(90deg, #059669 0%, #10b981 50%, #34d399 100%);"></div>
-      <div class="energy-ring" style="border-color: #059669;"></div>
-      <div class="energy-streaks">
-        ${Array.from({length: 7}, (_, i) => `
-          <div class="energy-streak" style="
-            left: ${25 + i * 55}px;
-            animation-delay: ${i * 0.1}s;
-            background: linear-gradient(180deg, #059669 0%, transparent 100%);
-          "></div>
-        `).join('')}
-      </div>
-    </div>
-  `;
-  
-  document.body.appendChild(animationOverlay);
-  
-  setTimeout(() => {
-    if (animationOverlay.parentNode) {
-      animationOverlay.parentNode.removeChild(animationOverlay);
-    }
-  }, 3000);
-  
-  addBattleLog(`🪄 ¡LOKI ejecuta su ATAQUE ESPECIAL! ¡Ilusiones Mágicas!`);
-}
-
-// Función para mostrar animación especial de Venom
-function showVenomSpecialAnimation(villainIndex) {
-  const animationOverlay = document.createElement('div');
-  animationOverlay.className = 'iron-man-special';
-  
-  animationOverlay.innerHTML = `
-    <div class="iron-man-animation" style="background: linear-gradient(135deg, #1f2937 0%, #374151 50%, #4b5563 100%);">
-      <div class="iron-man-character" style="background: linear-gradient(45deg, #1f2937 0%, #374151 50%, #4b5563 100%);">🕷️</div>
-      <div class="energy-beam" style="background: linear-gradient(90deg, #1f2937 0%, #374151 50%, #4b5563 100%);"></div>
-      <div class="energy-ring" style="border-color: #1f2937;"></div>
-      <div class="energy-streaks">
-        ${Array.from({length: 6}, (_, i) => `
-          <div class="energy-streak" style="
-            left: ${30 + i * 60}px;
-            animation-delay: ${i * 0.13}s;
-            background: linear-gradient(180deg, #1f2937 0%, transparent 100%);
-          "></div>
-        `).join('')}
-      </div>
-    </div>
-  `;
-  
-  document.body.appendChild(animationOverlay);
-  
-  setTimeout(() => {
-    if (animationOverlay.parentNode) {
-      animationOverlay.parentNode.removeChild(animationOverlay);
-    }
-  }, 3000);
-  
-  addBattleLog(`🕷️ ¡VENOM ejecuta su ATAQUE ESPECIAL! ¡Simbionte Devastador!`);
-}
 
 // Agregar entrada al log de batalla
 function addBattleLog(message) {
@@ -1614,6 +1936,16 @@ function checkBattleEnd() {
 
 // Terminar batalla
 function endBattle() {
+  // Cambiar automáticamente a música de lobby
+  if (currentMusicType !== 'lobby') {
+    stopMusic();
+    setTimeout(() => {
+      if (lobbyMusicFile) {
+        playLobbyMusic();
+      }
+    }, 300);
+  }
+  
   showMessage('Batalla terminada', 'info');
   showScreen(characterSelection);
   renderCharacterSelection();
@@ -1634,10 +1966,99 @@ function logout() {
   localStorage.removeItem('currentUser');
   localStorage.removeItem('selectedHeroes');
   localStorage.removeItem('selectedVillains');
+  stopMusic();
+  
+  // Limpiar variables de música
+  currentAudio = null;
+  currentMusicType = null;
+  musicInitialized = false;
+  
   showMessage('Sesión cerrada', 'info');
   showScreen(landing);
 }
 
+
+
+// Función para cargar música guardada
+function loadSavedMusic() {
+  const savedLobbyMusic = localStorage.getItem('lobbyMusicFile');
+  const savedBattleMusic = localStorage.getItem('battleMusicFile');
+  
+  if (savedLobbyMusic) {
+    try {
+      const lobbyBlob = new Blob([Uint8Array.from(atob(savedLobbyMusic), c => c.charCodeAt(0))], { type: 'audio/mpeg' });
+      lobbyMusicFile = lobbyBlob;
+      
+      // Actualizar UI
+      const info = document.getElementById('lobby-music-info');
+      const removeBtn = document.getElementById('remove-lobby-music');
+      if (info) info.innerHTML = `✅ Música de lobby cargada desde almacenamiento`;
+      if (removeBtn) removeBtn.classList.remove('hidden');
+      
+      console.log('🎵 Música de lobby cargada desde localStorage');
+    } catch (error) {
+      console.error('Error al cargar música de lobby:', error);
+    }
+  }
+  
+  if (savedBattleMusic) {
+    try {
+      const battleBlob = new Blob([Uint8Array.from(atob(savedBattleMusic), c => c.charCodeAt(0))], { type: 'audio/mpeg' });
+      battleMusicFile = battleBlob;
+      
+      // Actualizar UI
+      const info = document.getElementById('battle-music-info');
+      const removeBtn = document.getElementById('remove-battle-music');
+      if (info) info.innerHTML = `✅ Música de batalla cargada desde almacenamiento`;
+      if (removeBtn) removeBtn.classList.remove('hidden');
+      
+      console.log('⚔️ Música de batalla cargada desde localStorage');
+    } catch (error) {
+      console.error('Error al cargar música de batalla:', error);
+    }
+  }
+}
+
+// Función para inicializar música automáticamente
+function initializeMusic() {
+  if (!musicInitialized) {
+    musicInitialized = true;
+    
+    // Cargar música desde localStorage si existe
+    const savedLobbyMusic = localStorage.getItem('lobbyMusicFile');
+    const savedBattleMusic = localStorage.getItem('battleMusicFile');
+    
+    if (savedLobbyMusic) {
+      // Convertir de base64 a blob
+      const lobbyBlob = new Blob([Uint8Array.from(atob(savedLobbyMusic), c => c.charCodeAt(0))], { type: 'audio/mpeg' });
+      lobbyMusicFile = lobbyBlob;
+      console.log('🎵 Música de lobby cargada desde localStorage');
+    }
+    
+    if (savedBattleMusic) {
+      // Convertir de base64 a blob
+      const battleBlob = new Blob([Uint8Array.from(atob(savedBattleMusic), c => c.charCodeAt(0))], { type: 'audio/mpeg' });
+      battleMusicFile = battleBlob;
+      console.log('⚔️ Música de batalla cargada desde localStorage');
+    }
+    
+    // Reproducir música de lobby automáticamente después de un breve delay
+    setTimeout(() => {
+      if (lobbyMusicFile && isMusicEnabled) {
+        playLobbyMusic();
+      }
+    }, 1000);
+  }
+}
+
 // Inicializar la aplicación
 console.log('🎮 Aplicación standalone iniciada');
-showMessage('¡Bienvenido a DataFight!', 'info'); 
+showMessage('¡Bienvenido a DataFight!', 'info');
+
+// Inicializar música automáticamente cuando se carga la página
+document.addEventListener('DOMContentLoaded', () => {
+  // Inicializar música automáticamente después de un breve delay
+  setTimeout(() => {
+    initializeMusic();
+  }, 500);
+}); 

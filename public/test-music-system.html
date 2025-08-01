@@ -1,0 +1,410 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Test - Sistema de Música y Recursos</title>
+  <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
+</head>
+<body class="bg-gray-900 text-white p-8">
+  <div class="max-w-4xl mx-auto">
+    <h1 class="text-3xl font-bold mb-8">🧪 Test del Sistema de Música y Recursos</h1>
+    
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
+      
+      <!-- Test de Música -->
+      <div class="bg-white bg-opacity-10 p-6 rounded-lg">
+        <h2 class="text-xl font-bold mb-4">🎵 Test de Música</h2>
+        
+        <div class="space-y-4">
+          <div>
+            <h3 class="font-semibold mb-2">Música de Lobby</h3>
+            <input type="file" id="test-lobby-music" accept=".mp3" class="mb-2">
+            <button onclick="testLobbyMusic()" class="bg-blue-600 text-white px-4 py-2 rounded">
+              Probar Música de Lobby
+            </button>
+          </div>
+          
+          <div>
+            <h3 class="font-semibold mb-2">Música de Batalla</h3>
+            <input type="file" id="test-battle-music" accept=".mp3" class="mb-2">
+            <button onclick="testBattleMusic()" class="bg-red-600 text-white px-4 py-2 rounded">
+              Probar Música de Batalla
+            </button>
+          </div>
+          
+          <div>
+            <button onclick="stopTestMusic()" class="bg-gray-600 text-white px-4 py-2 rounded">
+              Detener Música
+            </button>
+          </div>
+        </div>
+      </div>
+      
+      <!-- Test de Sonidos Especiales -->
+      <div class="bg-white bg-opacity-10 p-6 rounded-lg">
+        <h2 class="text-xl font-bold mb-4">🔊 Test de Sonidos Especiales</h2>
+        
+        <div class="space-y-4">
+          <div>
+            <h3 class="font-semibold mb-2">Sonido de Héroe</h3>
+            <input type="file" id="test-hero-sound" accept=".mp3,.wav,.ogg" class="mb-2">
+            <button onclick="testHeroSound()" class="bg-blue-600 text-white px-4 py-2 rounded">
+              Probar Sonido de Héroe
+            </button>
+          </div>
+          
+          <div>
+            <h3 class="font-semibold mb-2">Sonido de Villano</h3>
+            <input type="file" id="test-villain-sound" accept=".mp3,.wav,.ogg" class="mb-2">
+            <button onclick="testVillainSound()" class="bg-red-600 text-white px-4 py-2 rounded">
+              Probar Sonido de Villano
+            </button>
+          </div>
+          
+          <div>
+            <button onclick="stopTestSounds()" class="bg-gray-600 text-white px-4 py-2 rounded">
+              Detener Sonidos
+            </button>
+          </div>
+        </div>
+      </div>
+      
+      <!-- Test de Persistencia -->
+      <div class="bg-white bg-opacity-10 p-6 rounded-lg">
+        <h2 class="text-xl font-bold mb-4">💾 Test de Persistencia</h2>
+        
+        <div class="space-y-4">
+          <div>
+            <button onclick="saveTestData()" class="bg-green-600 text-white px-4 py-2 rounded">
+              Guardar Datos de Prueba
+            </button>
+          </div>
+          
+          <div>
+            <button onclick="loadTestData()" class="bg-yellow-600 text-white px-4 py-2 rounded">
+              Cargar Datos Guardados
+            </button>
+          </div>
+          
+          <div>
+            <button onclick="clearTestData()" class="bg-red-600 text-white px-4 py-2 rounded">
+              Limpiar Datos
+            </button>
+          </div>
+        </div>
+        
+        <div id="test-results" class="mt-4 p-4 bg-gray-800 rounded text-sm">
+          <h4 class="font-semibold mb-2">Resultados:</h4>
+          <div id="test-output"></div>
+        </div>
+      </div>
+      
+      <!-- Test de Navegación -->
+      <div class="bg-white bg-opacity-10 p-6 rounded-lg">
+        <h2 class="text-xl font-bold mb-4">🔄 Test de Navegación</h2>
+        
+        <div class="space-y-4">
+          <div>
+            <button onclick="testLobbyNavigation()" class="bg-blue-600 text-white px-4 py-2 rounded">
+              Simular Navegación a Lobby
+            </button>
+          </div>
+          
+          <div>
+            <button onclick="testBattleNavigation()" class="bg-red-600 text-white px-4 py-2 rounded">
+              Simular Navegación a Batalla
+            </button>
+          </div>
+          
+          <div>
+            <button onclick="testEndBattle()" class="bg-purple-600 text-white px-4 py-2 rounded">
+              Simular Fin de Batalla
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+    
+    <div class="mt-8 p-4 bg-gray-800 rounded">
+      <h3 class="font-semibold mb-2">📊 Estado del Sistema:</h3>
+      <div id="system-status" class="text-sm space-y-1"></div>
+    </div>
+  </div>
+
+  <script>
+    // Variables de prueba
+    let testLobbyMusic = null;
+    let testBattleMusic = null;
+    let testHeroSound = null;
+    let testVillainSound = null;
+    let testAudio = null;
+    
+    // Funciones de prueba
+    function testLobbyMusic() {
+      const file = document.getElementById('test-lobby-music').files[0];
+      if (file && file.type === 'audio/mpeg') {
+        testLobbyMusic = file;
+        playTestMusic(file, 'lobby');
+        updateStatus('Música de lobby cargada y reproduciéndose');
+      } else {
+        updateStatus('Error: Selecciona un archivo MP3 válido', 'error');
+      }
+    }
+    
+    function testBattleMusic() {
+      const file = document.getElementById('test-battle-music').files[0];
+      if (file && file.type === 'audio/mpeg') {
+        testBattleMusic = file;
+        playTestMusic(file, 'battle');
+        updateStatus('Música de batalla cargada y reproduciéndose');
+      } else {
+        updateStatus('Error: Selecciona un archivo MP3 válido', 'error');
+      }
+    }
+    
+    function playTestMusic(file, type) {
+      stopTestMusic();
+      testAudio = new Audio(URL.createObjectURL(file));
+      testAudio.loop = true;
+      testAudio.volume = 0.5;
+      
+      testAudio.play().then(() => {
+        updateStatus(`Reproduciendo música de ${type}`);
+      }).catch(error => {
+        updateStatus(`Error al reproducir música: ${error.message}`, 'error');
+      });
+    }
+    
+    function stopTestMusic() {
+      if (testAudio) {
+        testAudio.pause();
+        testAudio = null;
+        updateStatus('Música detenida');
+      }
+    }
+    
+    function testHeroSound() {
+      const file = document.getElementById('test-hero-sound').files[0];
+      if (file && (file.type === 'audio/mpeg' || file.type === 'audio/wav' || file.type === 'audio/ogg')) {
+        testHeroSound = file;
+        playTestSound(file, 'héroe');
+        updateStatus('Sonido de héroe cargado y reproduciéndose');
+      } else {
+        updateStatus('Error: Selecciona un archivo de audio válido', 'error');
+      }
+    }
+    
+    function testVillainSound() {
+      const file = document.getElementById('test-villain-sound').files[0];
+      if (file && (file.type === 'audio/mpeg' || file.type === 'audio/wav' || file.type === 'audio/ogg')) {
+        testVillainSound = file;
+        playTestSound(file, 'villano');
+        updateStatus('Sonido de villano cargado y reproduciéndose');
+      } else {
+        updateStatus('Error: Selecciona un archivo de audio válido', 'error');
+      }
+    }
+    
+    function playTestSound(file, type) {
+      stopTestSounds();
+      testAudio = new Audio(URL.createObjectURL(file));
+      testAudio.volume = 0.7;
+      
+      testAudio.play().then(() => {
+        updateStatus(`Reproduciendo sonido de ${type}`);
+      }).catch(error => {
+        updateStatus(`Error al reproducir sonido: ${error.message}`, 'error');
+      });
+    }
+    
+    function stopTestSounds() {
+      if (testAudio) {
+        testAudio.pause();
+        testAudio = null;
+        updateStatus('Sonidos detenidos');
+      }
+    }
+    
+    function saveTestData() {
+      try {
+        // Guardar música de prueba
+        if (testLobbyMusic) {
+          const reader = new FileReader();
+          reader.onload = function(e) {
+            const base64 = btoa(String.fromCharCode(...new Uint8Array(e.target.result)));
+            localStorage.setItem('testLobbyMusic', base64);
+            updateStatus('Música de lobby guardada en localStorage');
+          };
+          reader.readAsArrayBuffer(testLobbyMusic);
+        }
+        
+        if (testBattleMusic) {
+          const reader = new FileReader();
+          reader.onload = function(e) {
+            const base64 = btoa(String.fromCharCode(...new Uint8Array(e.target.result)));
+            localStorage.setItem('testBattleMusic', base64);
+            updateStatus('Música de batalla guardada en localStorage');
+          };
+          reader.readAsArrayBuffer(testBattleMusic);
+        }
+        
+        // Guardar sonidos de prueba
+        if (testHeroSound) {
+          const reader = new FileReader();
+          reader.onload = function(e) {
+            const base64 = btoa(String.fromCharCode(...new Uint8Array(e.target.result)));
+            localStorage.setItem('testHeroSound', base64);
+            updateStatus('Sonido de héroe guardado en localStorage');
+          };
+          reader.readAsArrayBuffer(testHeroSound);
+        }
+        
+        if (testVillainSound) {
+          const reader = new FileReader();
+          reader.onload = function(e) {
+            const base64 = btoa(String.fromCharCode(...new Uint8Array(e.target.result)));
+            localStorage.setItem('testVillainSound', base64);
+            updateStatus('Sonido de villano guardado en localStorage');
+          };
+          reader.readAsArrayBuffer(testVillainSound);
+        }
+        
+        updateStatus('✅ Todos los datos de prueba guardados correctamente');
+      } catch (error) {
+        updateStatus(`Error al guardar datos: ${error.message}`, 'error');
+      }
+    }
+    
+    function loadTestData() {
+      try {
+        const results = [];
+        
+        // Cargar música de prueba
+        const savedLobbyMusic = localStorage.getItem('testLobbyMusic');
+        if (savedLobbyMusic) {
+          const lobbyBlob = new Blob([Uint8Array.from(atob(savedLobbyMusic), c => c.charCodeAt(0))], { type: 'audio/mpeg' });
+          testLobbyMusic = lobbyBlob;
+          results.push('✅ Música de lobby cargada desde localStorage');
+        }
+        
+        const savedBattleMusic = localStorage.getItem('testBattleMusic');
+        if (savedBattleMusic) {
+          const battleBlob = new Blob([Uint8Array.from(atob(savedBattleMusic), c => c.charCodeAt(0))], { type: 'audio/mpeg' });
+          testBattleMusic = battleBlob;
+          results.push('✅ Música de batalla cargada desde localStorage');
+        }
+        
+        // Cargar sonidos de prueba
+        const savedHeroSound = localStorage.getItem('testHeroSound');
+        if (savedHeroSound) {
+          const heroBlob = new Blob([Uint8Array.from(atob(savedHeroSound), c => c.charCodeAt(0))], { type: 'audio/mpeg' });
+          testHeroSound = heroBlob;
+          results.push('✅ Sonido de héroe cargado desde localStorage');
+        }
+        
+        const savedVillainSound = localStorage.getItem('testVillainSound');
+        if (savedVillainSound) {
+          const villainBlob = new Blob([Uint8Array.from(atob(savedVillainSound), c => c.charCodeAt(0))], { type: 'audio/mpeg' });
+          testVillainSound = villainBlob;
+          results.push('✅ Sonido de villano cargado desde localStorage');
+        }
+        
+        if (results.length > 0) {
+          updateStatus(results.join('\n'));
+        } else {
+          updateStatus('❌ No se encontraron datos guardados');
+        }
+      } catch (error) {
+        updateStatus(`Error al cargar datos: ${error.message}`, 'error');
+      }
+    }
+    
+    function clearTestData() {
+      localStorage.removeItem('testLobbyMusic');
+      localStorage.removeItem('testBattleMusic');
+      localStorage.removeItem('testHeroSound');
+      localStorage.removeItem('testVillainSound');
+      
+      testLobbyMusic = null;
+      testBattleMusic = null;
+      testHeroSound = null;
+      testVillainSound = null;
+      stopTestMusic();
+      stopTestSounds();
+      
+      updateStatus('🗑️ Todos los datos de prueba eliminados');
+    }
+    
+    function testLobbyNavigation() {
+      updateStatus('🔄 Simulando navegación a lobby...');
+      setTimeout(() => {
+        if (testLobbyMusic) {
+          playTestMusic(testLobbyMusic, 'lobby');
+          updateStatus('✅ Música de lobby reproducida automáticamente');
+        } else {
+          updateStatus('❌ No hay música de lobby cargada');
+        }
+      }, 500);
+    }
+    
+    function testBattleNavigation() {
+      updateStatus('🔄 Simulando navegación a batalla...');
+      setTimeout(() => {
+        if (testBattleMusic) {
+          playTestMusic(testBattleMusic, 'batalla');
+          updateStatus('✅ Música de batalla reproducida automáticamente');
+        } else {
+          updateStatus('❌ No hay música de batalla cargada');
+        }
+      }, 500);
+    }
+    
+    function testEndBattle() {
+      updateStatus('🔄 Simulando fin de batalla...');
+      setTimeout(() => {
+        if (testLobbyMusic) {
+          playTestMusic(testLobbyMusic, 'lobby');
+          updateStatus('✅ Regreso a música de lobby automáticamente');
+        } else {
+          updateStatus('❌ No hay música de lobby cargada');
+        }
+      }, 500);
+    }
+    
+    function updateStatus(message, type = 'info') {
+      const output = document.getElementById('test-output');
+      const timestamp = new Date().toLocaleTimeString();
+      const color = type === 'error' ? 'text-red-400' : 'text-green-400';
+      
+      output.innerHTML += `<div class="${color}">[${timestamp}] ${message}</div>`;
+      output.scrollTop = output.scrollHeight;
+      
+      console.log(`[${timestamp}] ${message}`);
+    }
+    
+    function updateSystemStatus() {
+      const status = document.getElementById('system-status');
+      const lobbyMusic = localStorage.getItem('testLobbyMusic') ? '✅' : '❌';
+      const battleMusic = localStorage.getItem('testBattleMusic') ? '✅' : '❌';
+      const heroSound = localStorage.getItem('testHeroSound') ? '✅' : '❌';
+      const villainSound = localStorage.getItem('testVillainSound') ? '✅' : '❌';
+      
+      status.innerHTML = `
+        <div>Música de Lobby: ${lobbyMusic}</div>
+        <div>Música de Batalla: ${battleMusic}</div>
+        <div>Sonido de Héroe: ${heroSound}</div>
+        <div>Sonido de Villano: ${villainSound}</div>
+        <div>Audio Activo: ${testAudio ? '🔊' : '🔇'}</div>
+      `;
+    }
+    
+    // Actualizar estado cada segundo
+    setInterval(updateSystemStatus, 1000);
+    updateSystemStatus();
+    
+    // Mensaje inicial
+    updateStatus('🧪 Sistema de prueba iniciado. Carga archivos de música y sonidos para probar la funcionalidad.');
+  </script>
+</body>
+</html> 

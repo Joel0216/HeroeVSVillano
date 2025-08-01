@@ -7,6 +7,7 @@ const heroSchema = new mongoose.Schema({
   city: { type: String, default: '' },
   team: { type: String, default: '' },
   image: { type: String, default: '' },
+  specialAttackAnimationUrl: { type: String, default: '' },
   createdBy: { type: String, required: true },
   createdAt: { type: Date, default: Date.now }
 });

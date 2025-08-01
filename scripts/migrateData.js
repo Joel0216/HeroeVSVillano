@@ -1,44 +1,45 @@
 import mongoose from 'mongoose';
+import dotenv from 'dotenv';
 import Hero from '../models/heroModel.js';
 import Villain from '../models/villainModel.js';
-import { connectDB } from '../db.js';
 
-async function migrateData() {
-  await connectDB();
-  
-  console.log('🔄 Migrando datos existentes...');
-  
-  // Migrar héroes
-  const heroes = await Hero.find({ heroId: { $exists: false } });
-  console.log(`📋 Encontrados ${heroes.length} héroes sin heroId`);
-  
-  for (const hero of heroes) {
-    const timestamp = Date.now().toString();
-    const random = Math.random().toString(36).substring(2, 8);
-    hero.heroId = `HERO_${timestamp}_${random}`;
-    hero.createdBy = hero.createdBy || 'ADMIN_MIGRATION'; // Asignar por defecto
-    await hero.save();
-    console.log(`✅ Héroe migrado: ${hero.name} -> ${hero.heroId}`);
-  }
-  
-  // Migrar villanos
-  const villains = await Villain.find({ villainId: { $exists: false } });
-  console.log(`📋 Encontrados ${villains.length} villanos sin villainId`);
-  
-  for (const villain of villains) {
-    const timestamp = Date.now().toString();
-    const random = Math.random().toString(36).substring(2, 8);
-    villain.villainId = `VILLAIN_${timestamp}_${random}`;
-    villain.createdBy = villain.createdBy || 'ADMIN_MIGRATION'; // Asignar por defecto
-    await villain.save();
-    console.log(`✅ Villano migrado: ${villain.name} -> ${villain.villainId}`);
-  }
-  
-  console.log('✅ Migración completada');
-  mongoose.connection.close();
-}
+dotenv.config();
 
-migrateData().catch(err => {
-  console.error('Error en migración:', err);
-  mongoose.connection.close();
+// Conectar a MongoDB
+mongoose.connect(process.env.MONGODB_URI || 'mongodb://localhost:27017/superheroes_db', {
+  useNewUrlParser: true,
+  useUnifiedTopology: true
+});
+
+const db = mongoose.connection;
+
+db.on('error', console.error.bind(console, 'Error de conexión a MongoDB:'));
+db.once('open', async () => {
+  console.log('✅ Conectado a MongoDB');
+  
+  try {
+    console.log('🔄 Iniciando migración de datos...');
+    
+    // Eliminar campo specialAttackSoundUrl de héroes
+    const heroResult = await Hero.updateMany(
+      {},
+      { $unset: { specialAttackSoundUrl: "" } }
+    );
+    console.log(`✅ Héroes actualizados: ${heroResult.modifiedCount}`);
+    
+    // Eliminar campo specialAttackSoundUrl de villanos
+    const villainResult = await Villain.updateMany(
+      {},
+      { $unset: { specialAttackSoundUrl: "" } }
+    );
+    console.log(`✅ Villanos actualizados: ${villainResult.modifiedCount}`);
+    
+    console.log('🎉 Migración completada exitosamente');
+    
+  } catch (error) {
+    console.error('❌ Error durante la migración:', error);
+  } finally {
+    mongoose.connection.close();
+    console.log('🔌 Conexión cerrada');
+  }
 }); 

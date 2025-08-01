@@ -16,7 +16,7 @@ const getVillains = async (req, res) => {
 const createVillain = async (req, res) => {
   try {
     console.log('📋 POST /villains - Usuario:', req.user);
-    const { name, alias, city, team, image } = req.body;
+    const { name, alias, city, team, image, specialAttackAnimationUrl } = req.body;
     
     // Validar campos requeridos
     if (!name || !alias) {
@@ -55,6 +55,7 @@ const createVillain = async (req, res) => {
       city: city || '',
       team: team || '',
       image: image || '',
+      specialAttackAnimationUrl: specialAttackAnimationUrl || '',
       createdBy: req.user.userId
     });
     
@@ -76,13 +77,13 @@ const updateVillain = async (req, res) => {
   try {
     console.log('📋 PUT /villains - Usuario:', req.user);
     const { villainId } = req.params;
-    const { name, alias, city, team, image } = req.body;
+    const { name, alias, city, team, image, specialAttackAnimationUrl } = req.body;
     
     console.log('📋 VillainId:', villainId);
     
     const villain = await Villain.findOneAndUpdate(
       { villainId },
-      { name, alias, city, team, image },
+      { name, alias, city, team, image, specialAttackAnimationUrl },
       { new: true, runValidators: true }
     );
     

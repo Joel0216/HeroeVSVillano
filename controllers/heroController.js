@@ -16,7 +16,7 @@ const getHeroes = async (req, res) => {
 const createHero = async (req, res) => {
   try {
     console.log('📋 POST /heroes - Usuario:', req.user);
-    const { name, alias, city, team, image } = req.body;
+    const { name, alias, city, team, image, specialAttackAnimationUrl } = req.body;
     
     // Validar campos requeridos
     if (!name || !alias) {
@@ -55,6 +55,7 @@ const createHero = async (req, res) => {
       city: city || '',
       team: team || '',
       image: image || '',
+      specialAttackAnimationUrl: specialAttackAnimationUrl || '',
       createdBy: req.user.userId
     });
     
@@ -76,13 +77,13 @@ const updateHero = async (req, res) => {
   try {
     console.log('📋 PUT /heroes - Usuario:', req.user);
     const { heroId } = req.params;
-    const { name, alias, city, team, image } = req.body;
+    const { name, alias, city, team, image, specialAttackAnimationUrl } = req.body;
     
     console.log('📋 HeroId:', heroId);
     
     const hero = await Hero.findOneAndUpdate(
       { heroId },
-      { name, alias, city, team, image },
+      { name, alias, city, team, image, specialAttackAnimationUrl },
       { new: true, runValidators: true }
     );
     
